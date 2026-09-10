@@ -17,7 +17,7 @@ class Command(BaseCommand):
     help = "创建可重复执行的完整演示账套"
 
     def handle(self, *args, **options):
-        company, _ = Company.objects.get_or_create(code="DEMO", defaults={"name": "远帆家居有限公司"})
+        company, _ = Company.objects.get_or_create(code="DEMO", defaults={"name": "NEXUS 演示贸易有限公司"})
         admin, created = User.objects.get_or_create(username="admin", defaults={"first_name": "系统管理员", "email": "admin@example.invalid", "is_staff": True, "is_superuser": True})
         if created:
             admin.set_password("Admin123!")
@@ -56,4 +56,3 @@ class Command(BaseCommand):
         po, _ = PurchaseOrder.objects.get_or_create(company=company, po_number="PO-DEMO-001", defaults={"supplier": supplier, "warehouse": us, "status": PurchaseOrder.Status.PENDING_APPROVAL, "currency": "CNY", "expected_at": timezone.localdate() + timedelta(days=45), "notes": "演示采购单"})
         PurchaseOrderItem.objects.get_or_create(purchase_order=po, sku=sku, defaults={"quantity": 40, "unit_cost": 380})
         self.stdout.write(self.style.SUCCESS("演示账套已就绪：admin / Admin123!"))
-

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -71,8 +72,11 @@ def post_shipment(shipment, actor=None):
     shipment.shipped_at = timezone.now()
     shipment.save(update_fields=["status", "shipped_at", "updated_at"])
     order = shipment.order
-    total = sum((i.quantity for i in order.items.all()), Decimal("0"))
-    shipped = sum((i.shipped_quantity for i in order.items.all()), Decimal("0"))
+    # Aggregate from the database so a prefetched Order instance cannot make the
+    # status calculation read stale shipped_quantity values.
+    totals = order.items.aggregate(total=Sum("quantity"), shipped=Sum("shipped_quantity"))
+    total = totals["total"] or Decimal("0")
+    shipped = totals["shipped"] or Decimal("0")
     order.status = Order.Status.SHIPPED if shipped >= total else Order.Status.PARTIALLY_SHIPPED
     order.save(update_fields=["status", "updated_at"])
     return shipment

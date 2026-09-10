@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: 跨境电商 ERP API
+  title: NEXUS Commerce OS API
   version: 1.0.0
-  description: 商品、订单、采购、仓储、财务与平台集成 API
+  description: 连接商品、订单、采购、仓储、财务与全球渠道的跨境业务操作系统
 paths:
   /api/v1/allocations/:
     get:
@@ -8106,6 +8106,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/workflow-simulator/:
+    get:
+      operationId: api_v1_workflow_simulator_retrieve
+      description: Operate the complete ERP chain without external platform credentials.
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: api_v1_workflow_simulator_create
+      description: Operate the complete ERP chain without external platform credentials.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowActionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowActionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowActionRequest'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /health/:
     get:
       operationId: health_retrieve
@@ -13171,6 +13218,13 @@ components:
       - secret
       - updated_at
       - url
+    WorkflowActionRequest:
+      type: object
+      properties:
+        action:
+          type: string
+      required:
+      - action
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

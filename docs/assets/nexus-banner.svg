@@ -1,0 +1,60 @@
+<svg width="1440" height="520" viewBox="0 0 1440 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="20" x2="1320" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#080C1B"/>
+      <stop offset="0.55" stop-color="#11142B"/>
+      <stop offset="1" stop-color="#1B1450"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="228" y1="104" x2="1020" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8A75FF"/>
+      <stop offset="0.62" stop-color="#39D8C5"/>
+      <stop offset="1" stop-color="#BAF46E"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientTransform="translate(1140 100) rotate(120) scale(400 500)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5B4FE0" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#5B4FE0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1440" height="520" rx="30" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1438" height="518" rx="29" stroke="#8174E8" stroke-opacity="0.18" stroke-width="2"/>
+  <ellipse cx="1135" cy="110" rx="410" ry="360" fill="url(#halo)"/>
+  <g opacity="0.32" stroke="#7F72E7">
+    <circle cx="1170" cy="248" r="214"/>
+    <circle cx="1170" cy="248" r="154"/>
+    <circle cx="1170" cy="248" r="94"/>
+  </g>
+  <g opacity="0.56">
+    <path d="M916 258C1014 104 1252 92 1364 225" stroke="url(#beam)" stroke-width="2"/>
+    <path d="M918 328C1046 436 1274 425 1370 298" stroke="#3AD7C4" stroke-opacity="0.42"/>
+    <path d="M1035 53C1102 156 1240 340 1399 405" stroke="#7567E8" stroke-opacity="0.38"/>
+  </g>
+  <g filter="url(#glow)">
+    <circle cx="978" cy="186" r="7" fill="#39D8C5"/>
+    <circle cx="1118" cy="96" r="5" fill="#8B77FF"/>
+    <circle cx="1322" cy="180" r="6" fill="#BAF46E"/>
+    <circle cx="1270" cy="399" r="5" fill="#39D8C5"/>
+    <circle cx="1050" cy="408" r="4" fill="#8B77FF"/>
+  </g>
+  <g transform="translate(95 82)">
+    <rect width="66" height="66" rx="20" fill="url(#beam)"/>
+    <path d="M20 47V19H27L41 37V19H48V47H41L27 29V47H20Z" fill="#0B1020"/>
+  </g>
+  <text x="95" y="238" fill="#F7F7FF" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="800" letter-spacing="15">NEXUS</text>
+  <text x="101" y="284" fill="#40DCC7" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" letter-spacing="8">COMMERCE OPERATING SYSTEM</text>
+  <text x="99" y="346" fill="#B1B5CE" font-family="Arial, Helvetica, sans-serif" font-size="22">Connect every order. Orchestrate every move.</text>
+  <g transform="translate(99 395)" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="600">
+    <rect width="162" height="40" rx="20" fill="#7767E8" fill-opacity="0.16" stroke="#8D7CFF" stroke-opacity="0.5"/>
+    <circle cx="22" cy="20" r="5" fill="#9B8AFF"/><text x="36" y="25" fill="#DAD7FF">3 CHANNELS</text>
+    <rect x="178" width="176" height="40" rx="20" fill="#31CDBA" fill-opacity="0.1" stroke="#45DDCA" stroke-opacity="0.42"/>
+    <circle cx="200" cy="20" r="5" fill="#43DCC9"/><text x="214" y="25" fill="#C9FFF5">9 CORE FLOWS</text>
+    <rect x="370" width="177" height="40" rx="20" fill="#B6F36B" fill-opacity="0.08" stroke="#B6F36B" stroke-opacity="0.34"/>
+    <circle cx="392" cy="20" r="5" fill="#B6F36B"/><text x="406" y="25" fill="#E5FFC6">API READY</text>
+  </g>
+  <g fill="#FFFFFF" opacity="0.18">
+    <circle cx="870" cy="80" r="2"/><circle cx="925" cy="442" r="2"/><circle cx="1330" cy="68" r="2"/><circle cx="1250" cy="65" r="1.5"/><circle cx="1390" cy="330" r="2"/>
+  </g>
+</svg>

@@ -1,5 +1,26 @@
 # API 与外部系统接入
 
+## NEXUS 全链路模拟器
+
+在没有生产平台凭证时，可用同一套 REST API 验证完整业务链。查询状态：
+
+```http
+GET /api/v1/workflow-simulator/
+Authorization: Token <token>
+```
+
+执行一个节点：
+
+```http
+POST /api/v1/workflow-simulator/
+Authorization: Token <token>
+Content-Type: application/json
+
+{"action":"sync_orders"}
+```
+
+可用动作依次为 `bootstrap`、`sync_orders`、`allocate`、`ship`、`return_refund`、`replenish`、`approve_purchase`、`receive`、`settle`。每次写入都会生成审计事件；模拟器与正式连接器共享领域服务。
+
 ## 鉴权
 
 浏览器使用 Token 鉴权。WMS、海外仓和物流系统使用系统管理中签发的 API Key：
@@ -62,4 +83,3 @@ X-Idempotency-Key: wms-stock-WH01-SKU01-20260910T120001Z
 ## 新平台开发
 
 新增平台时继承 `BaseConnector`，至少实现 `test_connection` 与需要的同步能力，并在连接器注册表中注册 provider。核心业务只接收统一订单、库存、退货和财务结构，不依赖平台原始字段。
-

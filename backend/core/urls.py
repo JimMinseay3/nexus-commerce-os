@@ -52,4 +52,5 @@ urlpatterns = [
     path("auth/me/", views.MeView.as_view()),
     path("reports/dashboard/", views.DashboardView.as_view()),
     path("reports/profit/", views.ProfitReportView.as_view()),
+    path("workflow-simulator/", views.WorkflowSimulationView.as_view()),
 ] + router.urls

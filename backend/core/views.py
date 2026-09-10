@@ -31,6 +31,7 @@ from .services.orders import allocate_order, post_shipment
 from .services.procurement import post_receipt
 from .services.replenishment import generate_for_company
 from .services.transfers import receive_transfer, ship_transfer
+from .services.workflow import run_workflow_action, workflow_status
 from .tasks import push_shipment_tracking, sync_channel_account
 
 
@@ -48,7 +49,7 @@ class HealthView(APIView):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
-        return Response({"status": "ok", "service": "cross-border-erp", "time": timezone.now()})
+        return Response({"status": "ok", "service": "nexus-commerce-os", "time": timezone.now()})
 
 
 class LoginView(APIView):
@@ -726,3 +727,21 @@ class ProfitReportView(APIView):
         company = company_for(request)
         rows = models.FinanceEntry.objects.filter(company=company).values("entry_type").annotate(amount=Sum("base_amount")).order_by("entry_type")
         return Response({"currency": company.base_currency, "rows": rows})
+
+
+class WorkflowSimulationView(APIView):
+    """Operate the complete ERP chain without external platform credentials."""
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        return Response(workflow_status(company_for(request)))
+
+    @extend_schema(
+        request=inline_serializer("WorkflowActionRequest", fields={"action": drf_serializers.CharField()}),
+        responses=OpenApiTypes.OBJECT,
+    )
+    def post(self, request):
+        action_name = request.data.get("action", "")
+        result = run_workflow_action(company_for(request), request.user, action_name)
+        record_audit(request, f"nexus_{action_name}", detail=result)
+        return Response({"action": action_name, "result": result, "workflow": workflow_status(company_for(request))})

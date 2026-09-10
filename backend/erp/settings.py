@@ -91,8 +91,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "跨境电商 ERP API",
-    "DESCRIPTION": "商品、订单、采购、仓储、财务与平台集成 API",
+    "TITLE": "NEXUS Commerce OS API",
+    "DESCRIPTION": "连接商品、订单、采购、仓储、财务与全球渠道的跨境业务操作系统",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

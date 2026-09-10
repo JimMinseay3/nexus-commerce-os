@@ -1,5 +1,5 @@
 {
-  "name": "cross-border-erp-web",
+  "name": "nexus-commerce-os-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -27,4 +27,3 @@
     "vite": "^7.3.0"
   }
 }
-

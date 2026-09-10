@@ -44,6 +44,5 @@ for model in [models.Supplier, models.Warehouse, models.PurchaseOrder, models.Re
               models.AuditEvent, models.ImportJob, models.APIKey, models.Notification]:
     admin.site.register(model)
 
-admin.site.site_header = "跨境电商 ERP 管理后台"
+admin.site.site_header = "NEXUS Commerce OS 管理后台"
 admin.site.site_title = "ERP"
-
