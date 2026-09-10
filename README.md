@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![NEXUS CI](https://github.com/JimMinseay3/cross-border-erp/actions/workflows/ci.yml/badge.svg)](https://github.com/JimMinseay3/cross-border-erp/actions/workflows/ci.yml)
+[![NEXUS CI](https://github.com/JimMinseay3/nexus-commerce-os/actions/workflows/ci.yml/badge.svg)](https://github.com/JimMinseay3/nexus-commerce-os/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Django](https://img.shields.io/badge/Django-5-092E20?logo=django&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
@@ -104,7 +104,7 @@ graph TB
 ### Windows + Docker（推荐）
 
 ```powershell
-git clone https://github.com/JimMinseay3/cross-border-erp.git nexus
+git clone https://github.com/JimMinseay3/nexus-commerce-os.git nexus
 Set-Location nexus
 Copy-Item .env.example .env
 scripts\init.ps1
