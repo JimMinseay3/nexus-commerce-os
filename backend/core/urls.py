@@ -45,6 +45,16 @@ router.register("audit-events", views.AuditEventViewSet)
 router.register("api-keys", views.APIKeyViewSet)
 router.register("webhooks", views.WebhookViewSet)
 router.register("notifications", views.NotificationViewSet)
+router.register("integration-providers", views.IntegrationProviderViewSet, basename="integration-provider")
+router.register("integration-connections", views.IntegrationConnectionViewSet, basename="integration-connection")
+router.register("field-definitions", views.FieldDefinitionViewSet, basename="field-definition")
+router.register("mapping-sets", views.MappingSetViewSet, basename="mapping-set")
+router.register("mapping-runs", views.MappingRunViewSet, basename="mapping-run")
+router.register("ingestion-runs", views.IngestionRunViewSet, basename="ingestion-run")
+router.register("raw-records", views.RawRecordViewSet, basename="raw-record")
+router.register("data-conflicts", views.DataConflictViewSet, basename="data-conflict")
+router.register("external-identities", views.ExternalIdentityViewSet, basename="external-identity")
+router.register("outbound-actions", views.OutboundActionViewSet, basename="outbound-action")
 
 urlpatterns = [
     path("auth/login/", views.LoginView.as_view()),
@@ -53,4 +63,6 @@ urlpatterns = [
     path("reports/dashboard/", views.DashboardView.as_view()),
     path("reports/profit/", views.ProfitReportView.as_view()),
     path("workflow-simulator/", views.WorkflowSimulationView.as_view()),
+    path("lineage/<str:entity_type>/<uuid:entity_id>/", views.LineageView.as_view()),
+    path("analytics/overview/", views.AnalyticsOverviewView.as_view()),
 ] + router.urls

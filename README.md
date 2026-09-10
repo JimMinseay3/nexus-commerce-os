@@ -14,7 +14,7 @@
 
 ### 把分散在全球渠道、仓库与表格里的业务，连接成一套可以运转的系统。
 
-**NEXUS** 是面向跨境电商团队的中文 Commerce OS。统一 Amazon、Wayfair、Walmart 的商品、订单、仓储、采购、售后与经营财务，并在没有真实 API 凭证时，通过内置业务模拟器跑通完整闭环。
+**NEXUS** 是面向跨境电商团队的中文 Commerce OS 与全渠道数据中台。它以自己的标准字段体系统一 Amazon、eBay、Wayfair、Walmart、领星 ERP 和 Excel/CSV 的商品、订单、仓储、采购、售后与经营财务；没有真实 API 凭证时，也能通过内置业务模拟器跑通完整闭环。
 
 [快速开始](#-3-分钟启动) · [全链路沙盘](#-全链路业务沙盘) · [系统架构](#-系统架构) · [API 文档](docs/API_INTEGRATION.md) · [操作手册](docs/USER_GUIDE.md)
 
@@ -28,7 +28,7 @@
 
 <table>
   <tr>
-    <td width="33%"><b>🌐 三平台统一模型</b><br/><sub>Amazon、Wayfair、Walmart 连接器共享稳定的商品、订单、库存与财务核心。</sub></td>
+    <td width="33%"><b>🌐 全渠道标准模型</b><br/><sub>渠道、ERP、WMS 与文件先进入 NEXUS 标准字段体系，再驱动业务与分析。</sub></td>
     <td width="33%"><b>📦 不可变库存账本</b><br/><sub>库存变化全部写入流水，通过事务锁、预占与幂等键保证并发准确性。</sub></td>
     <td width="33%"><b>🧠 可解释智能补货</b><br/><sub>综合销量、提前期、安全库存、在途、MOQ 与整箱数生成建议。</sub></td>
   </tr>
@@ -74,6 +74,8 @@ flowchart LR
 | 退货售后 | 退货同步、质检处置、重新入库、报废、部分 / 全额退款、利润调整 |
 | 经营财务 | 多币种、汇率、移动加权成本、结算对账、订单级收入费用与贡献利润 |
 | 平台连接 | Amazon SP-API、Wayfair、Walmart 正式适配器与本地模拟器 |
+| 标准数据中台 | Raw / Canonical / Semantic 三层、字段目录、版本化映射、血缘、冲突与 Outbox |
+| 新增适配器 | eBay OAuth 订单/库存/履约；领星 ERP 商品/订单/库存/采购/财务只读契约 |
 | 企业能力 | RBAC、哈希链审计、Excel 导入预览与回滚、API Key、Webhook、OpenAPI |
 | 运维部署 | Docker Compose、Celery、Redis、Nginx、Windows 启停 / 升级 / 备份脚本 |
 
@@ -91,6 +93,8 @@ graph TB
     CONNECTORS --> AMZ[Amazon SP-API]
     CONNECTORS --> WAY[Wayfair]
     CONNECTORS --> WMT[Walmart]
+    CONNECTORS --> EBAY[eBay]
+    CONNECTORS --> LX[领星 ERP]
     CONNECTORS --> SIM[NEXUS Simulator]
     WMS[WMS / 3PL / Logistics] <--> API
     NGINX[Nginx] --> UI
@@ -154,6 +158,15 @@ Content-Type: application/json
 
 外部 WMS、海外仓与物流商可通过 API Key 接入库存回传、入出库、发货追踪和状态查询，并订阅库存变化与出库 Webhook。详见 [API 接入手册](docs/API_INTEGRATION.md)。
 
+### 标准数据中台
+
+左侧进入 **标准数据中台**，可以创建连接、查看标准字段、用安全规则把样本映射到 NEXUS 字段、发布不可变版本、处理冲突并追溯实体血缘。详细设计见 [统一业务标准模型](docs/CANONICAL_DATA_MODEL.md)。
+
+```text
+采集 → RawRecord → MappingVersion → 标准校验 → ExternalIdentity
+    → 权威合并 → 领域服务 → OutboxEvent → Semantic Views
+```
+
 ## 🔐 安全设计
 
 - 平台凭证使用主密钥加密存储，界面只返回掩码。
@@ -176,6 +189,9 @@ npm run build
 
 - [x] 商品、订单、采购、仓储、售后、经营财务核心
 - [x] Amazon / Wayfair / Walmart 连接器契约与模拟器
+- [x] eBay 与领星第一期连接器（领星只读）
+- [x] 字段目录、Raw 原始层、外部身份、冲突、血缘与受控写回
+- [x] 版本化可视映射中心与 PostgreSQL 只读语义视图
 - [x] 可操作的九步全链路业务沙盘
 - [x] Docker Compose 与 Windows 运维脚本
 - [ ] 生产账号认证与真实平台契约回归

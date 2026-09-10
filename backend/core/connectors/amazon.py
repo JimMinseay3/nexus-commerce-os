@@ -13,7 +13,7 @@ REGION_HOSTS = {
 
 
 class AmazonConnector(BaseConnector):
-    capabilities = ["orders", "inventory", "shipments", "returns", "transactions", "settlements", "notifications", "backfill"]
+    capabilities = ["orders.read", "inventory.read", "inventory.publish", "shipments.confirm", "tracking.push", "returns.read", "finance.read", "settlements.read"]
 
     def __init__(self, account):
         super().__init__(account)

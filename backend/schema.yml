@@ -184,6 +184,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/analytics/overview/:
+    get:
+      operationId: api_v1_analytics_overview_retrieve
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/api-keys/:
     get:
       operationId: api_v1_api_keys_list
@@ -1075,13 +1092,17 @@ paths:
           type: string
           enum:
           - amazon
+          - ebay
+          - lingxing
           - mock
           - walmart
           - wayfair
         description: |-
           * `amazon` - Amazon
+          * `ebay` - eBay
           * `wayfair` - Wayfair
           * `walmart` - Walmart
+          * `lingxing` - 领星 ERP
           * `mock` - 本地模拟器
       - name: search
         required: false
@@ -1565,6 +1586,127 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/data-conflicts/:
+    get:
+      operationId: api_v1_data_conflicts_list
+      parameters:
+      - in: query
+        name: field_key
+        schema:
+          type: string
+      - in: query
+        name: object_type
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - ignored
+          - open
+          - resolved
+        description: |-
+          * `open` - 待处理
+          * `resolved` - 已处理
+          * `ignored` - 已忽略
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDataConflictList'
+          description: ''
+  /api/v1/data-conflicts/{id}/:
+    get:
+      operationId: api_v1_data_conflicts_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 data conflict 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataConflict'
+          description: ''
+  /api/v1/data-conflicts/{id}/resolve/:
+    post:
+      operationId: api_v1_data_conflicts_resolve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 data conflict 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataConflict'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DataConflict'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DataConflict'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataConflict'
+          description: ''
   /api/v1/exchange-rates/:
     get:
       operationId: api_v1_exchange_rates_list
@@ -1748,6 +1890,323 @@ paths:
           type: string
           format: uuid
         description: 标识此 exchange rate 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/external-identities/:
+    get:
+      operationId: api_v1_external_identities_list
+      parameters:
+      - in: query
+        name: canonical_entity_id
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: canonical_entity_type
+        schema:
+          type: string
+      - in: query
+        name: connection
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: external_id
+        schema:
+          type: string
+      - in: query
+        name: object_type
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExternalIdentityList'
+          description: ''
+  /api/v1/external-identities/{id}/:
+    get:
+      operationId: api_v1_external_identities_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 external identity 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIdentity'
+          description: ''
+  /api/v1/field-definitions/:
+    get:
+      operationId: api_v1_field_definitions_list
+      parameters:
+      - in: query
+        name: classification
+        schema:
+          type: string
+          enum:
+          - internal
+          - pii
+          - public
+          - secret
+          - sensitive
+        description: |-
+          * `public` - 公开
+          * `internal` - 内部
+          * `sensitive` - 敏感
+          * `pii` - 个人信息
+          * `secret` - 密钥
+      - in: query
+        name: data_type
+        schema:
+          type: string
+          enum:
+          - array
+          - boolean
+          - date
+          - datetime
+          - decimal
+          - integer
+          - money
+          - object
+          - quantity
+          - string
+        description: |-
+          * `string` - 文本
+          * `integer` - 整数
+          * `decimal` - 小数
+          * `boolean` - 布尔
+          * `datetime` - 日期时间
+          * `date` - 日期
+          * `money` - 金额
+          * `quantity` - 数量
+          * `object` - 对象
+          * `array` - 数组
+      - in: query
+        name: domain
+        schema:
+          type: string
+      - in: query
+        name: is_current
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFieldDefinitionList'
+          description: ''
+    post:
+      operationId: api_v1_field_definitions_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldDefinition'
+          description: ''
+  /api/v1/field-definitions/{id}/:
+    get:
+      operationId: api_v1_field_definitions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 field definition 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldDefinition'
+          description: ''
+    put:
+      operationId: api_v1_field_definitions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 field definition 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FieldDefinition'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldDefinition'
+          description: ''
+    patch:
+      operationId: api_v1_field_definitions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 field definition 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFieldDefinition'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFieldDefinition'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFieldDefinition'
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldDefinition'
+          description: ''
+    delete:
+      operationId: api_v1_field_definitions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 field definition 的 UUID 字符串。
         required: true
       tags:
       - api
@@ -2443,6 +2902,579 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportJob'
           description: ''
+  /api/v1/ingestion-runs/:
+    get:
+      operationId: api_v1_ingestion_runs_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIngestionRunList'
+          description: ''
+  /api/v1/ingestion-runs/{id}/:
+    get:
+      operationId: api_v1_ingestion_runs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 ingestion run 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionRun'
+          description: ''
+  /api/v1/ingestion-runs/{id}/pause/:
+    post:
+      operationId: api_v1_ingestion_runs_pause_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 ingestion run 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionRun'
+          description: ''
+  /api/v1/ingestion-runs/{id}/resume/:
+    post:
+      operationId: api_v1_ingestion_runs_resume_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 ingestion run 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IngestionRun'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionRun'
+          description: ''
+  /api/v1/integration-connections/:
+    get:
+      operationId: api_v1_integration_connections_list
+      parameters:
+      - in: query
+        name: environment
+        schema:
+          type: string
+          enum:
+          - production
+          - sandbox
+        description: |-
+          * `sandbox` - 沙箱
+          * `production` - 生产
+      - in: query
+        name: is_enabled
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - in: query
+        name: provider
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: region
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIntegrationConnectionList'
+          description: ''
+    post:
+      operationId: api_v1_integration_connections_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+  /api/v1/integration-connections/{id}/:
+    get:
+      operationId: api_v1_integration_connections_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+    put:
+      operationId: api_v1_integration_connections_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+    patch:
+      operationId: api_v1_integration_connections_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConnection'
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+    delete:
+      operationId: api_v1_integration_connections_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/integration-connections/{id}/backfill/:
+    post:
+      operationId: api_v1_integration_connections_backfill_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+  /api/v1/integration-connections/{id}/discover_capabilities/:
+    post:
+      operationId: api_v1_integration_connections_discover_capabilities_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+  /api/v1/integration-connections/{id}/ingest/:
+    post:
+      operationId: api_v1_integration_connections_ingest_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+  /api/v1/integration-connections/{id}/test_connection/:
+    post:
+      operationId: api_v1_integration_connections_test_connection_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration connection 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConnection'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConnection'
+          description: ''
+  /api/v1/integration-providers/:
+    get:
+      operationId: api_v1_integration_providers_list
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: source_kind
+        schema:
+          type: string
+          enum:
+          - custom_api
+          - erp
+          - file
+          - logistics
+          - sales_channel
+          - warehouse
+          - wms
+        description: |-
+          * `sales_channel` - 销售渠道
+          * `erp` - ERP
+          * `wms` - WMS
+          * `warehouse` - 仓储平台
+          * `logistics` - 物流平台
+          * `file` - 文件
+          * `custom_api` - 自定义 API
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIntegrationProviderList'
+          description: ''
+  /api/v1/integration-providers/{id}/:
+    get:
+      operationId: api_v1_integration_providers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 integration provider 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationProvider'
+          description: ''
   /api/v1/inventory-balances/:
     get:
       operationId: api_v1_inventory_balances_list
@@ -2651,6 +3683,409 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InventoryLedger'
+          description: ''
+  /api/v1/lineage/{entity_type}/{entity_id}/:
+    get:
+      operationId: api_v1_lineage_retrieve
+      parameters:
+      - in: path
+        name: entity_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: entity_type
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/mapping-runs/:
+    get:
+      operationId: api_v1_mapping_runs_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMappingRunList'
+          description: ''
+  /api/v1/mapping-runs/{id}/:
+    get:
+      operationId: api_v1_mapping_runs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping run 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingRun'
+          description: ''
+  /api/v1/mapping-sets/:
+    get:
+      operationId: api_v1_mapping_sets_list
+      parameters:
+      - in: query
+        name: connection
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - in: query
+        name: resource_type
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - archived
+          - draft
+        description: |-
+          * `draft` - 草稿
+          * `active` - 已发布
+          * `archived` - 已归档
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMappingSetList'
+          description: ''
+    post:
+      operationId: api_v1_mapping_sets_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+  /api/v1/mapping-sets/{id}/:
+    get:
+      operationId: api_v1_mapping_sets_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+    put:
+      operationId: api_v1_mapping_sets_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+    patch:
+      operationId: api_v1_mapping_sets_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMappingSet'
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+    delete:
+      operationId: api_v1_mapping_sets_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/mapping-sets/{id}/preview/:
+    post:
+      operationId: api_v1_mapping_sets_preview_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+  /api/v1/mapping-sets/{id}/publish/:
+    post:
+      operationId: api_v1_mapping_sets_publish_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
+          description: ''
+  /api/v1/mapping-sets/{id}/versions/:
+    post:
+      operationId: api_v1_mapping_sets_versions_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 mapping set 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MappingSet'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingSet'
           description: ''
   /api/v1/notifications/:
     get:
@@ -3223,6 +4658,222 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+          description: ''
+  /api/v1/outbound-actions/:
+    get:
+      operationId: api_v1_outbound_actions_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOutboundActionList'
+          description: ''
+    post:
+      operationId: api_v1_outbound_actions_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundAction'
+          description: ''
+  /api/v1/outbound-actions/{id}/:
+    get:
+      operationId: api_v1_outbound_actions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 outbound action 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundAction'
+          description: ''
+    put:
+      operationId: api_v1_outbound_actions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 outbound action 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundAction'
+          description: ''
+    patch:
+      operationId: api_v1_outbound_actions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 outbound action 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOutboundAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOutboundAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOutboundAction'
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundAction'
+          description: ''
+    delete:
+      operationId: api_v1_outbound_actions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 outbound action 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/outbound-actions/{id}/retry/:
+    post:
+      operationId: api_v1_outbound_actions_retry_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 outbound action 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutboundAction'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundAction'
           description: ''
   /api/v1/packages/:
     get:
@@ -4075,6 +5726,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseOrder'
+          description: ''
+  /api/v1/raw-records/:
+    get:
+      operationId: api_v1_raw_records_list
+      parameters:
+      - in: query
+        name: canonical_entity_id
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: canonical_entity_type
+        schema:
+          type: string
+      - in: query
+        name: connection
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: object_type
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRawRecordList'
+          description: ''
+  /api/v1/raw-records/{id}/:
+    get:
+      operationId: api_v1_raw_records_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 raw record 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawRecord'
+          description: ''
+  /api/v1/raw-records/{id}/replay/:
+    post:
+      operationId: api_v1_raw_records_replay_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 raw record 的 UUID 字符串。
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RawRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RawRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RawRecord'
+        required: true
+      security:
+      - ApiKeyAuth: []
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawRecord'
           description: ''
   /api/v1/receipt-items/:
     get:
@@ -8521,6 +10295,20 @@ components:
       - store
       - store_name
       - updated_at
+    ClassificationEnum:
+      enum:
+      - public
+      - internal
+      - sensitive
+      - pii
+      - secret
+      type: string
+      description: |-
+        * `public` - 公开
+        * `internal` - 内部
+        * `sensitive` - 敏感
+        * `pii` - 个人信息
+        * `secret` - 密钥
     Company:
       type: object
       properties:
@@ -8557,6 +10345,103 @@ components:
       - id
       - name
       - updated_at
+    DataConflict:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        object_type:
+          type: string
+          maxLength: 40
+        canonical_entity_type:
+          type: string
+          maxLength: 40
+        canonical_entity_id:
+          type: string
+          format: uuid
+          nullable: true
+        field_key:
+          type: string
+          maxLength: 160
+        current_value:
+          nullable: true
+        incoming_value:
+          nullable: true
+        current_source:
+          type: string
+          maxLength: 120
+        incoming_source:
+          type: string
+          maxLength: 120
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/DataConflictStatusEnum'
+        resolution: {}
+        resolved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+        assigned_to:
+          type: integer
+          nullable: true
+      required:
+      - company
+      - created_at
+      - id
+      - object_type
+      - reason
+      - resolved_at
+      - updated_at
+    DataConflictStatusEnum:
+      enum:
+      - open
+      - resolved
+      - ignored
+      type: string
+      description: |-
+        * `open` - 待处理
+        * `resolved` - 已处理
+        * `ignored` - 已忽略
+    DataTypeEnum:
+      enum:
+      - string
+      - integer
+      - decimal
+      - boolean
+      - datetime
+      - date
+      - money
+      - quantity
+      - object
+      - array
+      type: string
+      description: |-
+        * `string` - 文本
+        * `integer` - 整数
+        * `decimal` - 小数
+        * `boolean` - 布尔
+        * `datetime` - 日期时间
+        * `date` - 日期
+        * `money` - 金额
+        * `quantity` - 数量
+        * `object` - 对象
+        * `array` - 数组
     DispositionEnum:
       enum:
       - restock
@@ -8648,6 +10533,151 @@ components:
       - id
       - rate
       - rate_date
+      - updated_at
+    ExternalIdentity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        object_type:
+          type: string
+          maxLength: 40
+        external_id:
+          type: string
+          maxLength: 200
+        scope:
+          type: string
+          maxLength: 160
+        canonical_entity_type:
+          type: string
+          maxLength: 40
+        canonical_entity_id:
+          type: string
+          format: uuid
+        confidence:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,4})?$
+        resolution_method:
+          type: string
+          maxLength: 30
+        company:
+          type: string
+          format: uuid
+        connection:
+          type: string
+          format: uuid
+      required:
+      - canonical_entity_id
+      - canonical_entity_type
+      - company
+      - connection
+      - created_at
+      - external_id
+      - id
+      - object_type
+      - provider
+      - scope
+      - updated_at
+    FieldDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        key:
+          type: string
+          maxLength: 160
+        version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          default: 1
+        domain:
+          type: string
+          maxLength: 40
+        name_zh:
+          type: string
+          maxLength: 120
+        name_en:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        data_type:
+          $ref: '#/components/schemas/DataTypeEnum'
+        precision:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        unit:
+          type: string
+          maxLength: 20
+        required:
+          type: boolean
+        default_value:
+          nullable: true
+        enum_values: {}
+        validation: {}
+        classification:
+          $ref: '#/components/schemas/ClassificationEnum'
+        authority:
+          type: string
+          maxLength: 40
+        override_policy:
+          type: string
+          maxLength: 30
+        is_filterable:
+          type: boolean
+        is_aggregatable:
+          type: boolean
+        is_exportable:
+          type: boolean
+        is_current:
+          type: boolean
+        deprecated_at:
+          type: string
+          format: date-time
+          nullable: true
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+      required:
+      - company
+      - created_at
+      - data_type
+      - domain
+      - id
+      - key
+      - name_en
+      - name_zh
       - updated_at
     FinanceEntry:
       type: object
@@ -8848,6 +10878,212 @@ components:
       - name
       - resource_type
       - updated_at
+    IngestionRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resource_type:
+          type: string
+          maxLength: 40
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        status:
+          type: string
+          maxLength: 20
+        cursor:
+          type: string
+          maxLength: 500
+        range_start:
+          type: string
+          format: date-time
+          nullable: true
+        range_end:
+          type: string
+          format: date-time
+          nullable: true
+        processed:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        succeeded:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        failed:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        connection:
+          type: string
+          format: uuid
+      required:
+      - connection
+      - connection_name
+      - created_at
+      - id
+      - resource_type
+      - updated_at
+    IntegrationConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        credentials:
+          writeOnly: true
+        masked_credentials:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        provider_key:
+          type: string
+          readOnly: true
+        provider_name:
+          type: string
+          readOnly: true
+        source_kind:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        environment:
+          $ref: '#/components/schemas/EnvironmentEnum'
+        region:
+          type: string
+          maxLength: 32
+        settings: {}
+        enabled_capabilities: {}
+        authority_priority:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_enabled:
+          type: boolean
+        sync_interval_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        backfill_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        last_sync_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_error:
+          type: string
+          readOnly: true
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          format: uuid
+        legacy_account:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+      required:
+      - company
+      - created_at
+      - id
+      - last_error
+      - last_sync_at
+      - legacy_account
+      - masked_credentials
+      - name
+      - provider
+      - provider_key
+      - provider_name
+      - source_kind
+      - updated_at
+    IntegrationProvider:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        source_kind_label:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        key:
+          type: string
+          maxLength: 60
+        name:
+          type: string
+          maxLength: 120
+        source_kind:
+          $ref: '#/components/schemas/SourceKindEnum'
+        description:
+          type: string
+        capabilities: {}
+        config_schema: {}
+        icon:
+          type: string
+          maxLength: 80
+        is_active:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - key
+      - name
+      - source_kind
+      - source_kind_label
+      - updated_at
     InventoryBalance:
       type: object
       properties:
@@ -9010,6 +11246,189 @@ components:
       required:
       - password
       - username
+    MappingRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          type: string
+          maxLength: 20
+        input_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        success_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        input_sample: {}
+        output_sample: {}
+        errors: {}
+        mapping_version:
+          type: string
+          format: uuid
+        created_by:
+          type: integer
+          nullable: true
+      required:
+      - created_at
+      - id
+      - mapping_version
+      - updated_at
+    MappingSet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingVersion'
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        resource_type:
+          type: string
+          maxLength: 40
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MappingSetStatusEnum'
+          readOnly: true
+        current_version:
+          type: integer
+          readOnly: true
+        description:
+          type: string
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+        connection:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - company
+      - connection_name
+      - created_at
+      - current_version
+      - id
+      - name
+      - resource_type
+      - status
+      - updated_at
+      - versions
+    MappingSetStatusEnum:
+      enum:
+      - draft
+      - active
+      - archived
+      type: string
+      description: |-
+        * `draft` - 草稿
+        * `active` - 已发布
+        * `archived` - 已归档
+    MappingVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        schema_version:
+          type: string
+          maxLength: 20
+        rules: {}
+        sample: {}
+        status:
+          $ref: '#/components/schemas/MappingVersionStatusEnum'
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        mapping_set:
+          type: string
+          format: uuid
+        published_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - id
+      - mapping_set
+      - published_at
+      - published_by
+      - updated_at
+      - version
+    MappingVersionStatusEnum:
+      enum:
+      - draft
+      - published
+      - retired
+      type: string
+      description: |-
+        * `draft` - 草稿
+        * `published` - 已发布
+        * `retired` - 已停用
+    ModeEnum:
+      enum:
+      - incremental
+      - backfill
+      - replay
+      - file
+      type: string
+      description: |-
+        * `incremental` - 增量
+        * `backfill` - 历史回补
+        * `replay` - 重放
+        * `file` - 文件
     MovementTypeEnum:
       enum:
       - opening
@@ -9156,6 +11575,13 @@ components:
           pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
         raw_payload:
           readOnly: true
+        source_status:
+          type: string
+          maxLength: 80
+        source_timezone:
+          type: string
+          maxLength: 64
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -9226,6 +11652,7 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+        extensions: {}
         order:
           type: string
           format: uuid
@@ -9268,6 +11695,75 @@ components:
         * `cancelled` - 已取消
         * `refunded` - 已退款
         * `closed` - 已关闭
+    OutboundAction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        action_type:
+          type: string
+          maxLength: 60
+        canonical_entity_type:
+          type: string
+          maxLength: 40
+        canonical_entity_id:
+          type: string
+          format: uuid
+          nullable: true
+        payload: {}
+        idempotency_key:
+          type: string
+          maxLength: 180
+        status:
+          type: string
+          readOnly: true
+        attempts:
+          type: integer
+          readOnly: true
+        result:
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+        next_retry_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        connection:
+          type: string
+          format: uuid
+      required:
+      - action_type
+      - attempts
+      - canonical_entity_type
+      - connection
+      - connection_name
+      - created_at
+      - error
+      - id
+      - idempotency_key
+      - next_retry_at
+      - provider
+      - result
+      - status
+      - updated_at
     Package:
       type: object
       properties:
@@ -9524,6 +12020,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Company'
+    PaginatedDataConflictList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DataConflict'
     PaginatedExchangeRateList:
       type: object
       required:
@@ -9547,6 +12066,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ExchangeRate'
+    PaginatedExternalIdentityList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalIdentity'
+    PaginatedFieldDefinitionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldDefinition'
     PaginatedFinanceEntryList:
       type: object
       required:
@@ -9616,6 +12181,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ImportTemplate'
+    PaginatedIngestionRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngestionRun'
+    PaginatedIntegrationConnectionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationConnection'
+    PaginatedIntegrationProviderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationProvider'
     PaginatedInventoryBalanceList:
       type: object
       required:
@@ -9662,6 +12296,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InventoryLedger'
+    PaginatedMappingRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingRun'
+    PaginatedMappingSetList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingSet'
     PaginatedNotificationList:
       type: object
       required:
@@ -9731,6 +12411,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Order'
+    PaginatedOutboundActionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboundAction'
     PaginatedPackageList:
       type: object
       required:
@@ -9823,6 +12526,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PurchaseOrder'
+    PaginatedRawRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawRecord'
     PaginatedReceiptItemList:
       type: object
       required:
@@ -10561,6 +13287,83 @@ components:
           type: string
           format: uuid
           readOnly: true
+    PatchedFieldDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        key:
+          type: string
+          maxLength: 160
+        version:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          default: 1
+        domain:
+          type: string
+          maxLength: 40
+        name_zh:
+          type: string
+          maxLength: 120
+        name_en:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        data_type:
+          $ref: '#/components/schemas/DataTypeEnum'
+        precision:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        unit:
+          type: string
+          maxLength: 20
+        required:
+          type: boolean
+        default_value:
+          nullable: true
+        enum_values: {}
+        validation: {}
+        classification:
+          $ref: '#/components/schemas/ClassificationEnum'
+        authority:
+          type: string
+          maxLength: 40
+        override_policy:
+          type: string
+          maxLength: 30
+        is_filterable:
+          type: boolean
+        is_aggregatable:
+          type: boolean
+        is_exportable:
+          type: boolean
+        is_current:
+          type: boolean
+        deprecated_at:
+          type: string
+          format: date-time
+          nullable: true
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
     PatchedFinanceEntry:
       type: object
       properties:
@@ -10694,6 +13497,129 @@ components:
           type: string
           format: uuid
           readOnly: true
+    PatchedIntegrationConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        credentials:
+          writeOnly: true
+        masked_credentials:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        provider_key:
+          type: string
+          readOnly: true
+        provider_name:
+          type: string
+          readOnly: true
+        source_kind:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        environment:
+          $ref: '#/components/schemas/EnvironmentEnum'
+        region:
+          type: string
+          maxLength: 32
+        settings: {}
+        enabled_capabilities: {}
+        authority_priority:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_enabled:
+          type: boolean
+        sync_interval_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        backfill_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        last_sync_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_error:
+          type: string
+          readOnly: true
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          format: uuid
+        legacy_account:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+    PatchedMappingSet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingVersion'
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        resource_type:
+          type: string
+          maxLength: 40
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MappingSetStatusEnum'
+          readOnly: true
+        current_version:
+          type: integer
+          readOnly: true
+        description:
+          type: string
+        company:
+          type: string
+          format: uuid
+          readOnly: true
+        connection:
+          type: string
+          format: uuid
+          nullable: true
     PatchedOrder:
       type: object
       properties:
@@ -10765,6 +13691,13 @@ components:
           pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
         raw_payload:
           readOnly: true
+        source_status:
+          type: string
+          maxLength: 80
+        source_timezone:
+          type: string
+          maxLength: 64
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -10823,6 +13756,7 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+        extensions: {}
         order:
           type: string
           format: uuid
@@ -10830,6 +13764,60 @@ components:
           type: string
           format: uuid
           nullable: true
+    PatchedOutboundAction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        action_type:
+          type: string
+          maxLength: 60
+        canonical_entity_type:
+          type: string
+          maxLength: 40
+        canonical_entity_id:
+          type: string
+          format: uuid
+          nullable: true
+        payload: {}
+        idempotency_key:
+          type: string
+          maxLength: 180
+        status:
+          type: string
+          readOnly: true
+        attempts:
+          type: integer
+          readOnly: true
+        result:
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+        next_retry_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        connection:
+          type: string
+          format: uuid
     PatchedPackage:
       type: object
       properties:
@@ -10905,6 +13893,7 @@ components:
         description:
           type: string
         attributes: {}
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -11379,6 +14368,7 @@ components:
           type: string
           maxLength: 40
         tax_attributes: {}
+        extensions: {}
         is_active:
           type: boolean
         company:
@@ -11440,6 +14430,7 @@ components:
           maxLength: 20
         raw_payload:
           readOnly: true
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -11901,6 +14892,7 @@ components:
         description:
           type: string
         attributes: {}
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -11938,14 +14930,18 @@ components:
     ProviderEnum:
       enum:
       - amazon
+      - ebay
       - wayfair
       - walmart
+      - lingxing
       - mock
       type: string
       description: |-
         * `amazon` - Amazon
+        * `ebay` - eBay
         * `wayfair` - Wayfair
         * `walmart` - Walmart
+        * `lingxing` - 领星 ERP
         * `mock` - 本地模拟器
     PurchaseOrder:
       type: object
@@ -12090,6 +15086,86 @@ components:
         * `partial` - 部分收货
         * `completed` - 已完成
         * `cancelled` - 已取消
+    RawRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        connection_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        object_type:
+          type: string
+          maxLength: 40
+        external_id:
+          type: string
+          maxLength: 200
+        external_version:
+          type: string
+          default: '1'
+          maxLength: 80
+        scope:
+          type: string
+          maxLength: 160
+        event_time:
+          type: string
+          format: date-time
+          nullable: true
+        payload: {}
+        payload_hash:
+          type: string
+          maxLength: 64
+        status:
+          type: string
+          maxLength: 20
+        canonical_entity_type:
+          type: string
+          maxLength: 40
+        canonical_entity_id:
+          type: string
+          format: uuid
+          nullable: true
+        error:
+          type: string
+        company:
+          type: string
+          format: uuid
+        connection:
+          type: string
+          format: uuid
+        ingestion_run:
+          type: string
+          format: uuid
+          nullable: true
+        mapping_version:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - company
+      - connection
+      - connection_name
+      - created_at
+      - external_id
+      - id
+      - object_type
+      - payload_hash
+      - provider
+      - scope
+      - updated_at
     Receipt:
       type: object
       properties:
@@ -12532,6 +15608,7 @@ components:
           type: string
           maxLength: 40
         tax_attributes: {}
+        extensions: {}
         is_active:
           type: boolean
         company:
@@ -12605,6 +15682,7 @@ components:
           maxLength: 20
         raw_payload:
           readOnly: true
+        extensions: {}
         company:
           type: string
           format: uuid
@@ -12731,6 +15809,24 @@ components:
         * `shipped` - 已发货
         * `delivered` - 已签收
         * `failed` - 回传失败
+    SourceKindEnum:
+      enum:
+      - sales_channel
+      - erp
+      - wms
+      - warehouse
+      - logistics
+      - file
+      - custom_api
+      type: string
+      description: |-
+        * `sales_channel` - 销售渠道
+        * `erp` - ERP
+        * `wms` - WMS
+        * `warehouse` - 仓储平台
+        * `logistics` - 物流平台
+        * `file` - 文件
+        * `custom_api` - 自定义 API
     StockCount:
       type: object
       properties:

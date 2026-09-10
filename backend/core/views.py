@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import connection, transaction
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Max, Q, Sum
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse
 from django.utils import timezone
@@ -25,11 +25,15 @@ from .audit import record_audit
 from .connectors import get_connector
 from .permissions import IsAdminRole, RolePermission
 from .services.finance import COST_TYPES, order_profit
+from .services.analytics import overview as analytics_overview
+from .services.datahub import ingest_records, replay_raw_record, run_ingestion
 from .services.imports import RESOURCE_FIELDS, execute_import, preview_import
 from .services.inventory import move_inventory
 from .services.orders import allocate_order, post_shipment
 from .services.procurement import post_receipt
 from .services.replenishment import generate_for_company
+from .services.mapping import preview_mapping, publish_mapping
+from .services.outbound import execute_action, queue_action
 from .services.transfers import receive_transfer, ship_transfer
 from .services.workflow import run_workflow_action, workflow_status
 from .tasks import push_shipment_tracking, sync_channel_account
@@ -198,6 +202,28 @@ class ChannelAccountViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
     filterset_fields = ["provider", "environment", "is_enabled"]
     search_fields = ["name"]
 
+    @staticmethod
+    def _mirror_connection(account):
+        provider = models.IntegrationProvider.objects.filter(key=account.provider).first()
+        if not provider:
+            return
+        models.IntegrationConnection.objects.update_or_create(
+            legacy_account=account,
+            defaults={"company": account.company, "provider": provider, "name": account.name,
+                      "environment": account.environment, "region": account.region,
+                      "credentials": account.credentials, "settings": account.settings,
+                      "enabled_capabilities": provider.capabilities, "is_enabled": account.is_enabled,
+                      "last_sync_at": account.last_sync_at, "last_error": account.last_error},
+        )
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        self._mirror_connection(serializer.instance)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        self._mirror_connection(serializer.instance)
+
     @action(detail=True, methods=["post"])
     def test_connection(self, request, pk=None):
         account = self.get_object()
@@ -208,10 +234,12 @@ class ChannelAccountViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
     @action(detail=True, methods=["post"])
     def discover_capabilities(self, request, pk=None):
         account = self.get_object()
-        account.capabilities = get_connector(account).discover_capabilities()
+        detail = get_connector(account).discover_capabilities()
+        account.capabilities = detail["capabilities"]
         account.save(update_fields=["capabilities", "updated_at"])
         record_audit(request, "discover_capabilities", account)
-        return Response({"capabilities": account.capabilities})
+        self._mirror_connection(account)
+        return Response(detail)
 
     @action(detail=True, methods=["post"])
     def sync(self, request, pk=None):
@@ -745,3 +773,257 @@ class WorkflowSimulationView(APIView):
         result = run_workflow_action(company_for(request), request.user, action_name)
         record_audit(request, f"nexus_{action_name}", detail=result)
         return Response({"action": action_name, "result": result, "workflow": workflow_status(company_for(request))})
+
+
+class IntegrationProviderViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.IntegrationProvider.objects.filter(is_active=True).order_by("source_kind", "name")
+    serializer_class = serializers.IntegrationProviderSerializer
+    permission_area = "integrations"
+    search_fields = ["key", "name", "source_kind"]
+    filterset_fields = ["source_kind", "is_active"]
+
+
+class IntegrationConnectionViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
+    queryset = models.IntegrationConnection.objects.select_related("provider", "legacy_account")
+    serializer_class = serializers.IntegrationConnectionSerializer
+    permission_area = "integrations"
+    search_fields = ["name", "provider__key", "provider__name"]
+    filterset_fields = ["provider", "environment", "region", "is_enabled"]
+
+    @action(detail=True, methods=["post"])
+    def test_connection(self, request, pk=None):
+        connection_obj = self.get_object()
+        result = get_connector(connection_obj).health()
+        connection_obj.last_error = "" if result["ok"] else result.get("error", "")
+        connection_obj.save(update_fields=["last_error", "updated_at"])
+        record_audit(request, "integration_test", connection_obj, result)
+        return Response(result, status=200 if result["ok"] else 400)
+
+    @action(detail=True, methods=["post"])
+    def discover_capabilities(self, request, pk=None):
+        connection_obj = self.get_object()
+        result = get_connector(connection_obj).discover_capabilities()
+        connection_obj.enabled_capabilities = result["capabilities"]
+        connection_obj.save(update_fields=["enabled_capabilities", "updated_at"])
+        return Response(result)
+
+    @action(detail=True, methods=["post"])
+    def ingest(self, request, pk=None):
+        connection_obj = self.get_object()
+        resource_type = request.data.get("resource_type", "orders")
+        records = request.data.get("records")
+        if records is not None:
+            if not isinstance(records, list):
+                return Response({"detail": "records 必须是数组"}, status=400)
+            result = ingest_records(connection_obj, resource_type, records)
+            return Response(result)
+        run, result = run_ingestion(connection_obj, resource_type, request.data.get("mode", "incremental"))
+        return Response({"run_id": str(run.id), **result})
+
+    @action(detail=True, methods=["post"])
+    def backfill(self, request, pk=None):
+        connection_obj = self.get_object()
+        months = min(int(request.data.get("months", connection_obj.backfill_months)), 24)
+        if connection_obj.provider.key == "ebay" and months > 3:
+            return Response({"detail": "eBay Fulfillment API 订单查询窗口最多约 90 天；更早订单请通过 NEXUS Excel/CSV 映射导入"}, status=400)
+        since = timezone.now() - timedelta(days=months * 31)
+        run, result = run_ingestion(connection_obj, request.data.get("resource_type", "orders"), "backfill", since=since)
+        return Response({"run_id": str(run.id), "range_start": since, **result})
+
+
+class FieldDefinitionViewSet(AuditedModelViewSet):
+    serializer_class = serializers.FieldDefinitionSerializer
+    permission_area = "integrations"
+    search_fields = ["key", "name_zh", "name_en", "description"]
+    filterset_fields = ["domain", "data_type", "classification", "is_current"]
+
+    def get_queryset(self):
+        company = company_for(self.request)
+        return models.FieldDefinition.objects.filter(Q(company__isnull=True) | Q(company=company)).order_by("domain", "key", "-version")
+
+    def perform_create(self, serializer):
+        instance = serializer.save(company=company_for(self.request))
+        record_audit(self.request, "field_definition_create", instance)
+
+    def perform_update(self, serializer):
+        if serializer.instance.company_id is None:
+            raise drf_serializers.ValidationError("系统标准字段不可直接修改，请新增版本")
+        super().perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        if instance.company_id is None:
+            raise drf_serializers.ValidationError("系统标准字段不可删除")
+        super().perform_destroy(instance)
+
+
+class MappingSetViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
+    queryset = models.MappingSet.objects.select_related("connection").prefetch_related("versions")
+    serializer_class = serializers.MappingSetSerializer
+    permission_area = "integrations"
+    filterset_fields = ["connection", "resource_type", "status"]
+
+    @action(detail=True, methods=["post"], url_path="versions")
+    def create_version(self, request, pk=None):
+        mapping_set = self.get_object()
+        version = (mapping_set.versions.aggregate(value=Max("version"))["value"] or 0) + 1
+        item = models.MappingVersion.objects.create(
+            mapping_set=mapping_set, version=version, schema_version=request.data.get("schema_version", "1.0"),
+            rules=request.data.get("rules", []), sample=request.data.get("sample", {}),
+        )
+        record_audit(request, "mapping_version_create", item)
+        return Response(serializers.MappingVersionSerializer(item).data, status=201)
+
+    def _version(self, request):
+        mapping_set = self.get_object()
+        version_id = request.data.get("version_id")
+        return mapping_set.versions.get(pk=version_id) if version_id else mapping_set.versions.order_by("-version").first()
+
+    @action(detail=True, methods=["post"])
+    def preview(self, request, pk=None):
+        version = self._version(request)
+        if not version:
+            return Response({"detail": "请先创建映射版本"}, status=400)
+        samples = request.data.get("samples", [version.sample] if version.sample else [])
+        if not isinstance(samples, list) or not samples:
+            return Response({"detail": "samples 必须是非空数组"}, status=400)
+        run = preview_mapping(version, samples, request.user)
+        return Response(serializers.MappingRunSerializer(run).data)
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        version = self._version(request)
+        if not version:
+            return Response({"detail": "请先创建映射版本"}, status=400)
+        version = publish_mapping(version, request.user)
+        record_audit(request, "mapping_publish", version)
+        return Response(serializers.MappingVersionSerializer(version).data)
+
+
+class MappingRunViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = serializers.MappingRunSerializer
+    permission_area = "integrations"
+
+    def get_queryset(self):
+        return models.MappingRun.objects.filter(mapping_version__mapping_set__company=company_for(self.request)).order_by("-created_at")
+
+
+class IngestionRunViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = serializers.IngestionRunSerializer
+    permission_classes = [RolePermission]
+    permission_area = "integrations"
+
+    def get_queryset(self):
+        return models.IngestionRun.objects.filter(connection__company=company_for(self.request)).order_by("-created_at")
+
+    @action(detail=True, methods=["post"])
+    def pause(self, request, pk=None):
+        run = self.get_object()
+        if run.status in {"queued", "running"}:
+            run.status = "paused"
+            run.save(update_fields=["status", "updated_at"])
+        return Response(self.get_serializer(run).data)
+
+    @action(detail=True, methods=["post"])
+    def resume(self, request, pk=None):
+        previous = self.get_object()
+        run, result = run_ingestion(previous.connection, previous.resource_type, previous.mode, since=previous.range_start, cursor=previous.cursor)
+        return Response({"run_id": str(run.id), **result})
+
+
+class RawRecordViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = serializers.RawRecordSerializer
+    permission_classes = [IsAdminRole]
+    filterset_fields = ["connection", "object_type", "status", "canonical_entity_type", "canonical_entity_id"]
+
+    def get_queryset(self):
+        return models.RawRecord.objects.filter(company=company_for(self.request)).select_related("connection__provider").order_by("-created_at")
+
+    @action(detail=True, methods=["post"])
+    def replay(self, request, pk=None):
+        raw = self.get_object()
+        version = models.MappingVersion.objects.filter(pk=request.data.get("version_id"), mapping_set__company=company_for(request)).first() if request.data.get("version_id") else raw.mapping_version
+        result = replay_raw_record(raw, version)
+        record_audit(request, "raw_record_replay", raw, result)
+        return Response(result)
+
+
+class ExternalIdentityViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = serializers.ExternalIdentitySerializer
+    filterset_fields = ["connection", "object_type", "external_id", "canonical_entity_type", "canonical_entity_id"]
+
+    def get_queryset(self):
+        return models.ExternalIdentity.objects.filter(company=company_for(self.request)).select_related("connection__provider").order_by("-created_at")
+
+
+class DataConflictViewSet(CompanyQuerySetMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = models.DataConflict.objects.all()
+    serializer_class = serializers.DataConflictSerializer
+    permission_classes = [RolePermission]
+    permission_area = "integrations"
+    filterset_fields = ["object_type", "status", "field_key"]
+
+    @action(detail=True, methods=["post"])
+    def resolve(self, request, pk=None):
+        conflict = self.get_object()
+        choice = request.data.get("choice")
+        if choice not in {"keep_current", "accept_incoming", "ignore"}:
+            return Response({"detail": "choice 必须为 keep_current、accept_incoming 或 ignore"}, status=400)
+        conflict.status = "ignored" if choice == "ignore" else "resolved"
+        conflict.resolution = {"choice": choice, "note": request.data.get("note", ""), "actor": request.user.username}
+        conflict.resolved_at = timezone.now()
+        conflict.assigned_to = request.user
+        conflict.save(update_fields=["status", "resolution", "resolved_at", "assigned_to", "updated_at"])
+        record_audit(request, "data_conflict_resolve", conflict, conflict.resolution)
+        return Response(self.get_serializer(conflict).data)
+
+
+class OutboundActionViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
+    queryset = models.OutboundAction.objects.select_related("connection__provider")
+    serializer_class = serializers.OutboundActionSerializer
+    permission_area = "integrations"
+
+    def get_queryset(self):
+        return self.queryset.filter(connection__company=company_for(self.request)).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        data = serializer.validated_data
+        action_obj = queue_action(data["connection"], data["action_type"], data.get("payload", {}), data["idempotency_key"], data.get("canonical_entity_type", ""), data.get("canonical_entity_id"))
+        serializer.instance = action_obj
+        record_audit(self.request, "outbound_action_queue", action_obj)
+
+    @action(detail=True, methods=["post"])
+    def retry(self, request, pk=None):
+        action_obj = self.get_object()
+        try:
+            result = execute_action(action_obj)
+            return Response(result)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=502)
+
+
+class LineageView(APIView):
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request, entity_type, entity_id):
+        company = company_for(request)
+        identities = models.ExternalIdentity.objects.filter(company=company, canonical_entity_type=entity_type, canonical_entity_id=entity_id)
+        raws = models.RawRecord.objects.filter(company=company, canonical_entity_type=entity_type, canonical_entity_id=entity_id)
+        conflicts = models.DataConflict.objects.filter(company=company, canonical_entity_type=entity_type, canonical_entity_id=entity_id)
+        events = models.OutboxEvent.objects.filter(company=company, aggregate_type=entity_type, aggregate_id=entity_id)
+        raw_data = serializers.RawRecordSerializer(raws, many=True).data
+        if not (request.user.is_superuser or getattr(request.user.profile, "role", "") == models.UserProfile.Role.ADMIN):
+            for item in raw_data:
+                item.pop("payload", None)
+        return Response({
+            "entity_type": entity_type, "entity_id": str(entity_id), "field_definition_version": "1.0",
+            "sources": serializers.ExternalIdentitySerializer(identities, many=True).data,
+            "raw_records": raw_data,
+            "conflicts": serializers.DataConflictSerializer(conflicts, many=True).data,
+            "events": serializers.OutboxEventSerializer(events, many=True).data,
+        })
+
+
+class AnalyticsOverviewView(APIView):
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        days = max(1, min(int(request.query_params.get("days", 30)), 730))
+        return Response(analytics_overview(company_for(request), days))

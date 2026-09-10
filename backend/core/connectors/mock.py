@@ -7,7 +7,7 @@ from .base import BaseConnector
 
 
 class MockConnector(BaseConnector):
-    capabilities = ["orders", "inventory", "shipments", "returns", "transactions", "settlements", "backfill"]
+    capabilities = ["catalog.read", "orders.read", "returns.read", "inventory.read", "inventory.publish", "shipments.confirm", "tracking.push", "finance.read", "settlements.read"]
 
     def __init__(self, account, simulated_provider=None):
         super().__init__(account)
@@ -68,4 +68,3 @@ class MockConnector(BaseConnector):
 
     def pull_settlements(self, cursor=None, since=None):
         return [], cursor
-

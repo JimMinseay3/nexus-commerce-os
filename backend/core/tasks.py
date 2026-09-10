@@ -1,12 +1,17 @@
 import hashlib
 import hmac
 import json
+from datetime import timedelta
 
 import requests
 from celery import shared_task
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from .connectors import get_connector
-from .models import ChannelAccount, Company, Shipment, WebhookSubscription
+from .models import ChannelAccount, Company, IntegrationConnection, OutboundAction, OutboxEvent, Shipment, WebhookSubscription
+from .services.datahub import run_ingestion
+from .services.outbound import execute_action
 from .services.replenishment import generate_for_company
 from .services.sync import sync_account
 
@@ -24,6 +29,54 @@ def sync_enabled_accounts():
         sync_channel_account.delay(str(account.id), "orders")
         count += 1
     return count
+
+
+@shared_task
+def sync_due_integrations():
+    now = timezone.now()
+    default_intervals = {"orders": 5, "inventory": 10, "catalog": 15, "procurement": 15, "transactions": 60, "settlements": 1440}
+    capability_map = {"orders": "orders.read", "inventory": "inventory.read", "catalog": "catalog.read", "procurement": "procurement.read", "transactions": "finance.read", "settlements": "settlements.read"}
+    dispatched = 0
+    for item in IntegrationConnection.objects.filter(is_enabled=True).select_related("provider"):
+        settings = dict(item.settings)
+        configured = settings.get("resource_intervals", {})
+        for resource, capability in capability_map.items():
+            if capability not in item.enabled_capabilities:
+                continue
+            interval = int(configured.get(resource, default_intervals[resource]))
+            marker = f"last_dispatched:{resource}"
+            previous = parse_datetime(settings.get(marker, "")) if settings.get(marker) else None
+            if previous and now - previous < timedelta(minutes=interval):
+                continue
+            sync_integration_connection.delay(str(item.id), resource)
+            settings[marker] = now.isoformat()
+            dispatched += 1
+        item.settings = settings
+        item.save(update_fields=["settings", "updated_at"])
+    return dispatched
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
+def sync_integration_connection(self, connection_id, resource_type="orders", mode="incremental"):
+    connection = IntegrationConnection.objects.get(pk=connection_id)
+    run, result = run_ingestion(connection, resource_type=resource_type, mode=mode)
+    return {"run_id": str(run.id), **result}
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
+def process_outbound_action(self, action_id):
+    return execute_action(OutboundAction.objects.select_related("connection__provider").get(pk=action_id))
+
+
+@shared_task
+def publish_outbox_events():
+    published = 0
+    for event in OutboxEvent.objects.filter(status="pending").order_by("created_at")[:500]:
+        deliver_webhook_event.delay(event.topic, event.payload, str(event.company_id))
+        event.status, event.published_at, event.attempts = "published", timezone.now(), event.attempts + 1
+        event.save(update_fields=["status", "published_at", "attempts", "updated_at"])
+        published += 1
+    return published
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})

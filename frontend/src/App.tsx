@@ -19,6 +19,7 @@ const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'))
 const ImportsPage = lazy(() => import('./pages/ImportsPage'))
 const AdministrationPage = lazy(() => import('./pages/AdministrationPage'))
 const WorkflowPage = lazy(() => import('./pages/WorkflowPage'))
+const DataHubPage = lazy(() => import('./pages/DataHubPage'))
 
 const { Header, Sider, Content } = Layout
 
@@ -32,11 +33,12 @@ const menu: MenuProps['items'] = [
   { key: '/inventory', icon: <DatabaseOutlined />, label: '仓储库存' },
   { key: '/finance', icon: <DollarOutlined />, label: '经营财务' },
   { key: '/integrations', icon: <ApiOutlined />, label: '平台连接' },
+  { key: '/data-hub', icon: <NodeIndexOutlined />, label: '标准数据中台' },
   { key: '/imports', icon: <ImportOutlined />, label: '数据导入' },
   { key: '/administration', icon: <SafetyCertificateOutlined />, label: '系统管理' },
 ]
 
-const titles: Record<string, string> = { '/':'经营驾驶舱', '/workflow':'全链路沙盘', '/products':'商品中心', '/orders':'订单履约', '/returns':'退货售后', '/procurement':'采购管理', '/inventory':'仓储库存', '/finance':'经营财务', '/integrations':'平台连接', '/imports':'数据导入', '/administration':'系统管理' }
+const titles: Record<string, string> = { '/':'经营驾驶舱', '/workflow':'全链路沙盘', '/products':'商品中心', '/orders':'订单履约', '/returns':'退货售后', '/procurement':'采购管理', '/inventory':'仓储库存', '/finance':'经营财务', '/integrations':'平台连接', '/data-hub':'标准数据中台', '/imports':'数据导入', '/administration':'系统管理' }
 
 function ProtectedApp() {
   const { user, loading, logout } = useAuth()
@@ -71,6 +73,7 @@ function ProtectedApp() {
           <Route path="/inventory" element={<InventoryPage/>}/>
           <Route path="/finance" element={<FinancePage/>}/>
           <Route path="/integrations" element={<IntegrationsPage/>}/>
+          <Route path="/data-hub" element={<DataHubPage/>}/>
           <Route path="/imports" element={<ImportsPage/>}/>
           <Route path="/administration" element={<AdministrationPage/>}/>
           <Route path="*" element={<Navigate to="/" replace/>}/>

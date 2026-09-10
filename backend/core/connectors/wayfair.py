@@ -6,7 +6,7 @@ from .base import BaseConnector, ConnectorError
 
 
 class WayfairConnector(BaseConnector):
-    capabilities = ["orders", "inventory", "shipments", "returns", "backfill"]
+    capabilities = ["orders.read", "returns.read", "inventory.read", "inventory.publish", "shipments.confirm", "tracking.push"]
 
     def __init__(self, account):
         super().__init__(account)
@@ -70,4 +70,3 @@ class WayfairConnector(BaseConnector):
         mutation = self.settings.get("shipment_mutation") or "mutation Ship($input: ShipmentInput!) { registerShipment(input: $input) { success message } }"
         packages = [{"carrier": p.carrier, "trackingNumber": p.tracking_number, "shipDate": shipment.shipped_at.isoformat(), "items": [{"lineNumber": x.order_item.external_line_id, "quantity": float(x.quantity)} for x in p.items.all()]} for p in shipment.packages.all()]
         return self.graphql(mutation, {"input": {"poNumber": shipment.order.external_id, "packages": packages}})
-

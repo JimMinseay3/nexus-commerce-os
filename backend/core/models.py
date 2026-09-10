@@ -137,6 +137,7 @@ class Product(UUIDModel):
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     description = models.TextField(blank=True)
     attributes = models.JSONField(default=dict, blank=True)
+    extensions = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["company", "spu"], name="uniq_product_spu")]
@@ -180,6 +181,7 @@ class SKU(UUIDModel):
     ocean_lead_days = models.PositiveIntegerField(default=30)
     first_mile_mode = models.CharField(max_length=40, blank=True)
     tax_attributes = models.JSONField(default=dict, blank=True)
+    extensions = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -206,8 +208,10 @@ class BOMComponent(UUIDModel):
 class ChannelAccount(UUIDModel):
     class Provider(models.TextChoices):
         AMAZON = "amazon", "Amazon"
+        EBAY = "ebay", "eBay"
         WAYFAIR = "wayfair", "Wayfair"
         WALMART = "walmart", "Walmart"
+        LINGXING = "lingxing", "领星 ERP"
         MOCK = "mock", "本地模拟器"
 
     class Environment(models.TextChoices):
@@ -394,6 +398,9 @@ class Order(UUIDModel):
     discount = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     total = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     raw_payload = models.JSONField(default=dict, blank=True)
+    source_status = models.CharField(max_length=80, blank=True)
+    source_timezone = models.CharField(max_length=64, default="UTC")
+    extensions = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["store", "external_id"], name="uniq_order_external")]
@@ -415,6 +422,7 @@ class OrderItem(UUIDModel):
     unit_price = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     tax = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     discount = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    extensions = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["order", "external_line_id"], name="uniq_order_line")]
@@ -630,6 +638,7 @@ class Settlement(UUIDModel):
     net_amount = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     status = models.CharField(max_length=20, default="open")
     raw_payload = models.JSONField(default=dict, blank=True)
+    extensions = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["account", "external_id"], name="uniq_settlement_external")]
@@ -762,3 +771,276 @@ class Notification(UUIDModel):
     resource_type = models.CharField(max_length=40, blank=True)
     resource_id = models.CharField(max_length=80, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
+
+
+class IntegrationProvider(UUIDModel):
+    class SourceKind(models.TextChoices):
+        SALES_CHANNEL = "sales_channel", "销售渠道"
+        ERP = "erp", "ERP"
+        WMS = "wms", "WMS"
+        WAREHOUSE = "warehouse", "仓储平台"
+        LOGISTICS = "logistics", "物流平台"
+        FILE = "file", "文件"
+        CUSTOM_API = "custom_api", "自定义 API"
+
+    key = models.CharField(max_length=60, unique=True)
+    name = models.CharField(max_length=120)
+    source_kind = models.CharField(max_length=24, choices=SourceKind.choices)
+    description = models.TextField(blank=True)
+    capabilities = models.JSONField(default=list, blank=True)
+    config_schema = models.JSONField(default=dict, blank=True)
+    icon = models.CharField(max_length=80, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.get_source_kind_display()})"
+
+
+class IntegrationConnection(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="integration_connections")
+    provider = models.ForeignKey(IntegrationProvider, on_delete=models.PROTECT, related_name="connections")
+    legacy_account = models.OneToOneField(ChannelAccount, null=True, blank=True, on_delete=models.SET_NULL, related_name="integration_connection")
+    name = models.CharField(max_length=120)
+    environment = models.CharField(max_length=16, choices=ChannelAccount.Environment.choices, default=ChannelAccount.Environment.SANDBOX)
+    region = models.CharField(max_length=32, default="NA")
+    credentials = EncryptedJSONField(default=dict, blank=True)
+    settings = models.JSONField(default=dict, blank=True)
+    enabled_capabilities = models.JSONField(default=list, blank=True)
+    authority_priority = models.PositiveSmallIntegerField(default=50)
+    is_enabled = models.BooleanField(default=False)
+    sync_interval_minutes = models.PositiveIntegerField(default=15)
+    backfill_months = models.PositiveSmallIntegerField(default=24)
+    last_sync_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "provider", "name"], name="uniq_integration_connection")]
+        indexes = [models.Index(fields=["company", "is_enabled"]), models.Index(fields=["provider", "environment"])]
+
+    def masked_credentials(self):
+        return {key: ("••••" + str(value)[-4:] if value else "") for key, value in self.credentials.items()}
+
+    def __str__(self):
+        return f"{self.provider.name} / {self.name}"
+
+
+class FieldDefinition(UUIDModel):
+    class DataType(models.TextChoices):
+        STRING = "string", "文本"
+        INTEGER = "integer", "整数"
+        DECIMAL = "decimal", "小数"
+        BOOLEAN = "boolean", "布尔"
+        DATETIME = "datetime", "日期时间"
+        DATE = "date", "日期"
+        MONEY = "money", "金额"
+        QUANTITY = "quantity", "数量"
+        OBJECT = "object", "对象"
+        ARRAY = "array", "数组"
+
+    class Classification(models.TextChoices):
+        PUBLIC = "public", "公开"
+        INTERNAL = "internal", "内部"
+        SENSITIVE = "sensitive", "敏感"
+        PII = "pii", "个人信息"
+        SECRET = "secret", "密钥"
+
+    key = models.CharField(max_length=160)
+    version = models.PositiveIntegerField(default=1)
+    company = models.ForeignKey(Company, null=True, blank=True, on_delete=models.CASCADE, related_name="field_definitions")
+    domain = models.CharField(max_length=40, db_index=True)
+    name_zh = models.CharField(max_length=120)
+    name_en = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    data_type = models.CharField(max_length=20, choices=DataType.choices)
+    precision = models.PositiveSmallIntegerField(null=True, blank=True)
+    unit = models.CharField(max_length=20, blank=True)
+    required = models.BooleanField(default=False)
+    default_value = models.JSONField(null=True, blank=True)
+    enum_values = models.JSONField(default=list, blank=True)
+    validation = models.JSONField(default=dict, blank=True)
+    classification = models.CharField(max_length=20, choices=Classification.choices, default=Classification.INTERNAL)
+    authority = models.CharField(max_length=40, default="nexus")
+    override_policy = models.CharField(max_length=30, default="authority_wins")
+    is_filterable = models.BooleanField(default=True)
+    is_aggregatable = models.BooleanField(default=False)
+    is_exportable = models.BooleanField(default=True)
+    is_current = models.BooleanField(default=True)
+    deprecated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["key", "version"], name="uniq_field_definition_version")]
+        indexes = [models.Index(fields=["domain", "is_current"]), models.Index(fields=["classification"])]
+
+    def clean(self):
+        if self.company_id and not self.key.startswith("company."):
+            raise ValidationError("公司自定义字段必须使用 company.* 命名空间")
+
+    def __str__(self):
+        return f"{self.key}@{self.version}"
+
+
+class MappingSet(UUIDModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "草稿"
+        ACTIVE = "active", "已发布"
+        ARCHIVED = "archived", "已归档"
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="mapping_sets")
+    connection = models.ForeignKey(IntegrationConnection, null=True, blank=True, on_delete=models.CASCADE, related_name="mapping_sets")
+    name = models.CharField(max_length=120)
+    resource_type = models.CharField(max_length=40, db_index=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
+    current_version = models.PositiveIntegerField(default=0)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "connection", "name", "resource_type"], name="uniq_mapping_set")]
+
+
+class MappingVersion(UUIDModel):
+    mapping_set = models.ForeignKey(MappingSet, on_delete=models.CASCADE, related_name="versions")
+    version = models.PositiveIntegerField()
+    schema_version = models.CharField(max_length=20, default="1.0")
+    rules = models.JSONField(default=list)
+    sample = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=16, choices=[("draft", "草稿"), ("published", "已发布"), ("retired", "已停用")], default="draft")
+    published_at = models.DateTimeField(null=True, blank=True)
+    published_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["mapping_set", "version"], name="uniq_mapping_version")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).values("status", "rules", "schema_version").first()
+            if previous and previous["status"] == "published" and (previous["rules"] != self.rules or previous["schema_version"] != self.schema_version):
+                raise ValidationError("已发布的映射版本不可修改，请创建新版本")
+        super().save(*args, **kwargs)
+
+
+class MappingRun(UUIDModel):
+    mapping_version = models.ForeignKey(MappingVersion, on_delete=models.PROTECT, related_name="runs")
+    status = models.CharField(max_length=20, default="preview")
+    input_count = models.PositiveIntegerField(default=0)
+    success_count = models.PositiveIntegerField(default=0)
+    error_count = models.PositiveIntegerField(default=0)
+    input_sample = models.JSONField(default=list, blank=True)
+    output_sample = models.JSONField(default=list, blank=True)
+    errors = models.JSONField(default=list, blank=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+
+class IngestionRun(UUIDModel):
+    connection = models.ForeignKey(IntegrationConnection, on_delete=models.CASCADE, related_name="ingestion_runs")
+    resource_type = models.CharField(max_length=40)
+    mode = models.CharField(max_length=20, choices=[("incremental", "增量"), ("backfill", "历史回补"), ("replay", "重放"), ("file", "文件")], default="incremental")
+    status = models.CharField(max_length=20, default="queued", db_index=True)
+    cursor = models.CharField(max_length=500, blank=True)
+    range_start = models.DateTimeField(null=True, blank=True)
+    range_end = models.DateTimeField(null=True, blank=True)
+    processed = models.PositiveIntegerField(default=0)
+    succeeded = models.PositiveIntegerField(default=0)
+    failed = models.PositiveIntegerField(default=0)
+    error = models.TextField(blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+
+class RawRecord(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="raw_records")
+    connection = models.ForeignKey(IntegrationConnection, on_delete=models.PROTECT, related_name="raw_records")
+    ingestion_run = models.ForeignKey(IngestionRun, null=True, blank=True, on_delete=models.SET_NULL, related_name="raw_records")
+    object_type = models.CharField(max_length=40, db_index=True)
+    external_id = models.CharField(max_length=200, db_index=True)
+    external_version = models.CharField(max_length=80, default="1")
+    scope = models.CharField(max_length=160, blank=True)
+    event_time = models.DateTimeField(null=True, blank=True)
+    payload = models.JSONField(default=dict)
+    payload_hash = models.CharField(max_length=64, db_index=True)
+    status = models.CharField(max_length=20, default="received", db_index=True)
+    mapping_version = models.ForeignKey(MappingVersion, null=True, blank=True, on_delete=models.SET_NULL)
+    canonical_entity_type = models.CharField(max_length=40, blank=True)
+    canonical_entity_id = models.UUIDField(null=True, blank=True, db_index=True)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["connection", "object_type", "external_id", "external_version", "scope", "payload_hash"], name="uniq_raw_record_event")]
+        indexes = [models.Index(fields=["company", "object_type", "created_at"])]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original = type(self).objects.filter(pk=self.pk).values_list("payload_hash", flat=True).first()
+            if original and original != self.payload_hash:
+                raise ValidationError("原始记录内容不可修改")
+        super().save(*args, **kwargs)
+
+
+class ExternalIdentity(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="external_identities")
+    connection = models.ForeignKey(IntegrationConnection, on_delete=models.CASCADE, related_name="external_identities")
+    object_type = models.CharField(max_length=40)
+    external_id = models.CharField(max_length=200)
+    scope = models.CharField(max_length=160, blank=True)
+    canonical_entity_type = models.CharField(max_length=40)
+    canonical_entity_id = models.UUIDField(db_index=True)
+    confidence = models.DecimalField(max_digits=5, decimal_places=4, default=1)
+    resolution_method = models.CharField(max_length=30, default="exact")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "connection", "object_type", "external_id", "scope"], name="uniq_external_identity")]
+        indexes = [models.Index(fields=["company", "canonical_entity_type", "canonical_entity_id"])]
+
+
+class DataConflict(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="data_conflicts")
+    object_type = models.CharField(max_length=40)
+    canonical_entity_type = models.CharField(max_length=40, blank=True)
+    canonical_entity_id = models.UUIDField(null=True, blank=True)
+    field_key = models.CharField(max_length=160, blank=True)
+    current_value = models.JSONField(null=True, blank=True)
+    incoming_value = models.JSONField(null=True, blank=True)
+    current_source = models.CharField(max_length=120, blank=True)
+    incoming_source = models.CharField(max_length=120, blank=True)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=[("open", "待处理"), ("resolved", "已处理"), ("ignored", "已忽略")], default="open", db_index=True)
+    resolution = models.JSONField(default=dict, blank=True)
+    assigned_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+
+class OutboundAction(UUIDModel):
+    connection = models.ForeignKey(IntegrationConnection, on_delete=models.CASCADE, related_name="outbound_actions")
+    action_type = models.CharField(max_length=60)
+    canonical_entity_type = models.CharField(max_length=40)
+    canonical_entity_id = models.UUIDField(null=True, blank=True)
+    payload = models.JSONField(default=dict)
+    idempotency_key = models.CharField(max_length=180, unique=True)
+    status = models.CharField(max_length=20, default="queued", db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    result = models.JSONField(default=dict, blank=True)
+    error = models.TextField(blank=True)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+
+
+class OutboxEvent(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="outbox_events")
+    topic = models.CharField(max_length=80, db_index=True)
+    aggregate_type = models.CharField(max_length=40)
+    aggregate_id = models.UUIDField(null=True, blank=True)
+    payload = models.JSONField(default=dict)
+    idempotency_key = models.CharField(max_length=180, unique=True)
+    status = models.CharField(max_length=20, default="pending", db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    published_at = models.DateTimeField(null=True, blank=True)
+    error = models.TextField(blank=True)
+
+
+class MetricDefinition(UUIDModel):
+    key = models.CharField(max_length=120, unique=True)
+    name_zh = models.CharField(max_length=120)
+    name_en = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    unit = models.CharField(max_length=20, blank=True)
+    dimensions = models.JSONField(default=list, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)

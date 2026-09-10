@@ -46,6 +46,7 @@ def upsert_normalized_order(account, data):
                 "sku": mapping.sku if mapping else None, "external_sku": external_sku,
                 "title": row.get("title") or row.get("Title", ""), "quantity": _decimal(row.get("quantity") or row.get("QuantityOrdered")),
                 "unit_price": _decimal(row.get("unit_price")), "tax": _decimal(row.get("tax")), "discount": _decimal(row.get("discount")),
+                "extensions": row.get("extensions", {}),
             },
         )
     return order

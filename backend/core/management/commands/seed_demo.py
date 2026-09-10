@@ -6,8 +6,8 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from core.models import (
-    ChannelAccount, ChannelSKU, Company, FinanceEntry, Product, PurchaseOrder, PurchaseOrderItem,
-    SKU, Store, Supplier, UserProfile, Warehouse,
+    ChannelAccount, ChannelSKU, Company, FinanceEntry, IntegrationConnection, IntegrationProvider,
+    Product, PurchaseOrder, PurchaseOrderItem, SKU, Store, Supplier, UserProfile, Warehouse,
 )
 from core.services.inventory import move_inventory
 from core.services.sync import sync_account
@@ -43,6 +43,15 @@ class Command(BaseCommand):
             account, _ = ChannelAccount.objects.get_or_create(company=company, provider=provider, name=name, defaults={"environment": "sandbox", "region": "NA", "settings": {"use_mock": True, "marketplace": marketplace, "demo_sku": sku.code}, "is_enabled": False})
             store, _ = Store.objects.get_or_create(company=company, account=account, external_id=f"{provider}-demo", defaults={"name": name, "marketplace": marketplace, "country": "US", "currency": "USD"})
             ChannelSKU.objects.get_or_create(sku=sku, store=store, external_sku=sku.code, defaults={"fulfillment": "fbm", "inventory_buffer": 3})
+            provider_definition = IntegrationProvider.objects.filter(key=provider).first()
+            if provider_definition:
+                IntegrationConnection.objects.update_or_create(
+                    legacy_account=account,
+                    defaults={"company": company, "provider": provider_definition, "name": name,
+                              "environment": account.environment, "region": account.region,
+                              "credentials": account.credentials, "settings": account.settings,
+                              "enabled_capabilities": provider_definition.capabilities, "is_enabled": account.is_enabled},
+                )
             try:
                 sync_account(account)
             except Exception as exc:

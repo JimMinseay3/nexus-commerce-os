@@ -78,8 +78,34 @@ X-Idempotency-Key: wms-stock-WH01-SKU01-20260910T120001Z
 
 需要 Wayfair Supplier Developer 账号下的 Client ID、Client Secret 和账号允许的 GraphQL Schema。不同供应商账号可能开放不同财务查询；不可用部分通过结算 Excel 导入。
 
+### eBay
+
+生产连接需要授权码流程获得的 `client_id`、`client_secret` 与 `refresh_token`，并授予 Fulfillment、Inventory、Finances 所需 scope。订单增量使用 Fulfillment API；库存使用 Inventory API；财务交易使用 `apiz.ebay.com` 的 Finances API；发货回传创建 Shipping Fulfillment。
+
+eBay Fulfillment API 的订单搜索只能覆盖最近约 90 天，不能仅凭该接口完成 24 个月历史订单回补。NEXUS 会拒绝误导性的超范围 API 回补请求；更早历史订单需要从卖家后台导出后，通过版本化 Excel/CSV 映射导入。Post-Order Returns 搜索在 eBay 官方沙箱不开放，因此退货契约测试需使用固定响应样本，生产闭环需正式账号。
+
+### 领星 ERP
+
+配置 `app_id`、`app_secret`、`token_path` 和账号实际开放的 `paths`。不同领星开放平台账号与接口版本可能有不同路径，NEXUS 不猜测路径；连接测试会明确提示缺失配置。第一期所有能力只读，写回白名单为空。
+
 连接器设置中的 `base_url`、查询或 mutation 可以覆盖默认值，以兼容平台区域和版本差异。密钥以加密字段保存，API 返回值只包含掩码。
 
 ## 新平台开发
 
 新增平台时继承 `BaseConnector`，至少实现 `test_connection` 与需要的同步能力，并在连接器注册表中注册 provider。核心业务只接收统一订单、库存、退货和财务结构，不依赖平台原始字段。
+## 数据中台接口
+
+所有路径以 `/api/v1` 开头。新集成先读取 `integration-providers`，创建 `integration-connections` 后可调用：
+
+- `POST /integration-connections/{id}/test_connection/`
+- `POST /integration-connections/{id}/discover_capabilities/`
+- `POST /integration-connections/{id}/ingest/`
+- `POST /integration-connections/{id}/backfill/`
+- `POST /mapping-sets/{id}/versions/`
+- `POST /mapping-sets/{id}/preview/`
+- `POST /mapping-sets/{id}/publish/`
+- `POST /raw-records/{id}/replay/`
+- `POST /data-conflicts/{id}/resolve/`
+- `GET /lineage/{entity_type}/{entity_id}/`
+
+`channel-accounts` 是兼容接口；新项目应使用 `integration-connections`。所有外部写回必须同时通过全局动作白名单和连接器能力声明，并提供唯一 `idempotency_key`。

@@ -110,9 +110,13 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
-    "sync-enabled-channel-accounts": {
-        "task": "core.tasks.sync_enabled_accounts",
-        "schedule": 300.0,
+    "sync-due-integrations": {
+        "task": "core.tasks.sync_due_integrations",
+        "schedule": 60.0,
+    },
+    "publish-outbox-events": {
+        "task": "core.tasks.publish_outbox_events",
+        "schedule": 10.0,
     },
     "generate-replenishment-suggestions": {
         "task": "core.tasks.generate_replenishment_suggestions",

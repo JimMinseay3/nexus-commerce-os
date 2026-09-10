@@ -8,7 +8,7 @@ from .base import BaseConnector, ConnectorError
 
 
 class WalmartConnector(BaseConnector):
-    capabilities = ["orders", "inventory", "shipments", "returns", "transactions", "settlements", "backfill"]
+    capabilities = ["orders.read", "returns.read", "inventory.read", "inventory.publish", "shipments.confirm", "tracking.push", "finance.read", "settlements.read"]
 
     def __init__(self, account):
         super().__init__(account)
@@ -87,4 +87,3 @@ class WalmartConnector(BaseConnector):
     def pull_returns(self, cursor=None, since=None):
         payload = self.request("GET", f"{self.base_url}/v3/returns", headers=self.headers(), params={"returnOrderId": cursor} if cursor else {})
         return payload.get("returnOrders", []), None
-

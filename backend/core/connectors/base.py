@@ -9,7 +9,9 @@ class ConnectorError(RuntimeError):
 
 
 class BaseConnector(ABC):
-    capabilities = ["orders", "inventory", "shipments"]
+    capabilities = ["orders.read", "inventory.read", "tracking.push"]
+    source_kind = "sales_channel"
+    writable_actions = {"inventory.publish", "shipments.confirm", "tracking.push", "orders.acknowledge"}
 
     def __init__(self, account):
         self.account = account
@@ -39,7 +41,45 @@ class BaseConnector(ABC):
     def test_connection(self): ...
 
     def discover_capabilities(self):
-        return self.capabilities
+        return {
+            "source_kind": self.source_kind,
+            "capabilities": self.capabilities,
+            "writable_actions": sorted(self.writable_actions),
+        }
+
+    def pull_changes(self, resource_type, cursor=None, since=None):
+        handlers = {
+            "orders": self.pull_order_changes,
+            "returns": self.pull_returns,
+            "inventory": lambda cursor=None, since=None: self.pull_inventory(cursor=cursor),
+            "transactions": self.pull_transactions,
+            "settlements": self.pull_settlements,
+        }
+        handler = handlers.get(resource_type)
+        if not handler:
+            raise ConnectorError(f"连接器不支持读取 {resource_type}")
+        return handler(cursor=cursor, since=since)
+
+    def fetch_object(self, resource_type, external_id):
+        raise ConnectorError(f"连接器不支持单对象读取: {resource_type}")
+
+    def normalize(self, resource_type, payload):
+        return payload
+
+    def validate(self, resource_type, payload):
+        if not isinstance(payload, dict):
+            raise ConnectorError("连接器记录必须是对象")
+        return payload
+
+    def push_action(self, action_type, payload):
+        if action_type not in self.writable_actions:
+            raise ConnectorError(f"写回动作不在白名单: {action_type}")
+        if action_type == "inventory.publish":
+            return self.push_inventory(payload.get("items", []))
+        shipment = payload.get("shipment")
+        if action_type in {"shipments.confirm", "tracking.push"} and shipment:
+            return self.push_tracking(shipment)
+        raise ConnectorError(f"写回动作缺少必要对象: {action_type}")
 
     def pull_orders(self, cursor=None, since=None):
         return [], None
@@ -74,7 +114,11 @@ class BaseConnector(ABC):
     def health(self):
         try:
             detail = self.test_connection()
-            return {"ok": True, "provider": self.account.provider, "detail": detail}
+            return {"ok": True, "provider": self.provider_key, "detail": detail}
         except Exception as exc:
-            return {"ok": False, "provider": self.account.provider, "error": str(exc)}
+            return {"ok": False, "provider": self.provider_key, "error": str(exc)}
 
+    @property
+    def provider_key(self):
+        provider = getattr(self.account, "provider", "unknown")
+        return getattr(provider, "key", provider)

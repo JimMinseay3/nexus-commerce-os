@@ -131,6 +131,29 @@ body { margin: 0; min-width: 1180px; min-height: 100vh; background: #f6f7fb; }
 .full-span { grid-column: 1 / -1; }
 .empty-state { padding: 70px 20px; text-align: center; color: #8a8fa4; }
 
+/* Canonical data hub */
+.hub-hero { min-height: 260px; display: flex; align-items: center; justify-content: space-between; gap: 42px; padding: 36px 42px; border-radius: 24px; color: #fff; background: radial-gradient(circle at 80% 0, rgba(53,216,196,.2), transparent 30%), linear-gradient(128deg,#0b1020,#181442 72%,#142e39); box-shadow: 0 22px 55px rgba(20,20,55,.18); }
+.hub-hero > div:first-child { max-width: 600px; }
+.hub-hero h2 { margin: 17px 0 10px; font-size: 34px; letter-spacing: -.05em; }
+.hub-hero p { margin: 0; color: #abb3cf; line-height: 1.8; }
+.hub-layers { display: flex; align-items: center; gap: 12px; }
+.hub-layers div { width: 126px; height: 126px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(139,131,224,.3); border-radius: 18px; background: rgba(255,255,255,.045); backdrop-filter: blur(12px); }
+.hub-layers svg { margin-bottom: 10px; color: #52e3c4; font-size: 22px; }
+.hub-layers b { font-size: 12px; letter-spacing: .1em; }
+.hub-layers span { margin-top: 7px; color: #929ab7; font-size: 9px; }
+.hub-layers i { color: #746ae3; font-style: normal; }
+.hub-stats { margin-top: 16px; }
+.hub-stats .ant-card { border-color: var(--nexus-line); border-radius: 15px; box-shadow: 0 8px 24px rgba(25,27,62,.035); }
+.hub-workbench { margin-top: 17px; border-color: var(--nexus-line); border-radius: 18px; box-shadow: 0 10px 34px rgba(25,27,62,.045); }
+.tab-tools { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.tab-tools .ant-alert { flex: 1; }
+.semantic-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+.semantic-grid > div { padding: 20px; border-radius: 14px; background: linear-gradient(145deg,#f7f6ff,#f2fcfa); }
+.semantic-grid span { display: block; color: #7d8297; font-size: 11px; }
+.semantic-grid b { display: block; margin-top: 7px; font-size: 23px; }
+.semantic-grid pre { grid-column: 1/-1; max-height: 300px; overflow: auto; padding: 17px; border-radius: 12px; color: #c7f7e9; background: #101526; }
+.mapping-preview { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
+
 @media (max-width: 1400px) {
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .integration-grid { grid-template-columns: 1fr 1fr; }

@@ -188,6 +188,23 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["company", "raw_payload"]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        role = getattr(getattr(user, "profile", None), "role", "")
+        is_admin = bool(user and (user.is_superuser or role == models.UserProfile.Role.ADMIN))
+        if not is_admin:
+            data.pop("raw_payload", None)
+        if role not in {models.UserProfile.Role.ADMIN, models.UserProfile.Role.OPERATIONS, models.UserProfile.Role.WAREHOUSE} and not getattr(user, "is_superuser", False):
+            if data.get("buyer_name"):
+                data["buyer_name"] = data["buyer_name"][:1] + "***"
+            if data.get("buyer_email"):
+                data["buyer_email"] = "***@***"
+            address = data.get("ship_to") or {}
+            data["ship_to"] = {key: address.get(key) for key in ["country", "state", "city"] if address.get(key)}
+        return data
+
 
 class AllocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -233,6 +250,14 @@ class ReturnOrderSerializer(serializers.ModelSerializer):
         model = models.ReturnOrder
         fields = "__all__"
         read_only_fields = ["company", "raw_payload"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not (user and (user.is_superuser or getattr(getattr(user, "profile", None), "role", "") == models.UserProfile.Role.ADMIN)):
+            data.pop("raw_payload", None)
+        return data
 
 
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):
@@ -315,6 +340,14 @@ class SettlementSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["company", "raw_payload"]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not (user and (user.is_superuser or getattr(getattr(user, "profile", None), "role", "") == models.UserProfile.Role.ADMIN)):
+            data.pop("raw_payload", None)
+        return data
+
 
 class FinanceEntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -382,3 +415,165 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = models.Notification
         fields = "__all__"
         read_only_fields = ["company", "user"]
+
+
+class IntegrationProviderSerializer(serializers.ModelSerializer):
+    source_kind_label = serializers.CharField(source="get_source_kind_display", read_only=True)
+
+    class Meta:
+        model = models.IntegrationProvider
+        fields = "__all__"
+
+
+class IntegrationConnectionSerializer(serializers.ModelSerializer):
+    credentials = serializers.JSONField(write_only=True, required=False)
+    masked_credentials = serializers.SerializerMethodField()
+    provider_key = serializers.CharField(source="provider.key", read_only=True)
+    provider_name = serializers.CharField(source="provider.name", read_only=True)
+    source_kind = serializers.CharField(source="provider.source_kind", read_only=True)
+
+    class Meta:
+        model = models.IntegrationConnection
+        fields = "__all__"
+        read_only_fields = ["company", "legacy_account", "last_sync_at", "last_error"]
+
+    def get_masked_credentials(self, obj) -> dict:
+        return obj.masked_credentials()
+
+    def _sync_legacy(self, instance):
+        if instance.provider.key == "file":
+            return
+        account = instance.legacy_account
+        if not account:
+            account = models.ChannelAccount.objects.create(
+                company=instance.company, provider=instance.provider.key, name=instance.name,
+                environment=instance.environment, region=instance.region, credentials=instance.credentials,
+                settings=instance.settings, capabilities=instance.enabled_capabilities, is_enabled=instance.is_enabled,
+            )
+            instance.legacy_account = account
+            instance.save(update_fields=["legacy_account", "updated_at"])
+            return
+        account.name, account.environment, account.region = instance.name, instance.environment, instance.region
+        account.credentials, account.settings = instance.credentials, instance.settings
+        account.capabilities, account.is_enabled = instance.enabled_capabilities, instance.is_enabled
+        account.save()
+
+    def create(self, validated_data):
+        provider = validated_data["provider"]
+        validated_data.setdefault("enabled_capabilities", provider.capabilities)
+        validated_data.setdefault("authority_priority", {"sales_channel": 100, "erp": 50, "file": 10}.get(provider.source_kind, 40))
+        instance = super().create(validated_data)
+        self._sync_legacy(instance)
+        return instance
+
+    def update(self, instance, validated_data):
+        credentials = validated_data.pop("credentials", None)
+        if credentials is not None:
+            merged = dict(instance.credentials)
+            merged.update({key: value for key, value in credentials.items() if value and not str(value).startswith("••••")})
+            validated_data["credentials"] = merged
+        instance = super().update(instance, validated_data)
+        self._sync_legacy(instance)
+        return instance
+
+
+class FieldDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FieldDefinition
+        fields = "__all__"
+        read_only_fields = ["company"]
+
+    def validate(self, attrs):
+        company = getattr(self.instance, "company", None) or getattr(self.context.get("request").user.profile, "company", None)
+        if company and not attrs.get("key", getattr(self.instance, "key", "")).startswith("company."):
+            raise serializers.ValidationError("公司自定义字段必须使用 company.* 命名空间")
+        return attrs
+
+
+class MappingVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MappingVersion
+        fields = "__all__"
+        read_only_fields = ["published_at", "published_by"]
+
+
+class MappingSetSerializer(serializers.ModelSerializer):
+    versions = MappingVersionSerializer(many=True, read_only=True)
+    connection_name = serializers.CharField(source="connection.name", read_only=True)
+
+    class Meta:
+        model = models.MappingSet
+        fields = "__all__"
+        read_only_fields = ["company", "status", "current_version"]
+
+    def validate_connection(self, value):
+        company = getattr(self.context["request"].user.profile, "company", None)
+        if value and value.company_id != getattr(company, "id", None):
+            raise serializers.ValidationError("连接实例不属于当前公司")
+        return value
+
+
+class MappingRunSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MappingRun
+        fields = "__all__"
+
+
+class IngestionRunSerializer(serializers.ModelSerializer):
+    connection_name = serializers.CharField(source="connection.name", read_only=True)
+
+    class Meta:
+        model = models.IngestionRun
+        fields = "__all__"
+
+
+class RawRecordSerializer(serializers.ModelSerializer):
+    provider = serializers.CharField(source="connection.provider.key", read_only=True)
+    connection_name = serializers.CharField(source="connection.name", read_only=True)
+
+    class Meta:
+        model = models.RawRecord
+        fields = "__all__"
+
+
+class ExternalIdentitySerializer(serializers.ModelSerializer):
+    provider = serializers.CharField(source="connection.provider.key", read_only=True)
+
+    class Meta:
+        model = models.ExternalIdentity
+        fields = "__all__"
+
+
+class DataConflictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.DataConflict
+        fields = "__all__"
+        read_only_fields = ["company", "resolved_at"]
+
+
+class OutboundActionSerializer(serializers.ModelSerializer):
+    connection_name = serializers.CharField(source="connection.name", read_only=True)
+    provider = serializers.CharField(source="connection.provider.key", read_only=True)
+
+    class Meta:
+        model = models.OutboundAction
+        fields = "__all__"
+        read_only_fields = ["status", "attempts", "result", "error", "next_retry_at"]
+
+    def validate_connection(self, value):
+        company = getattr(self.context["request"].user.profile, "company", None)
+        if value.company_id != getattr(company, "id", None):
+            raise serializers.ValidationError("连接实例不属于当前公司")
+        return value
+
+
+class OutboxEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.OutboxEvent
+        fields = "__all__"
+
+
+class MetricDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MetricDefinition
+        fields = "__all__"
