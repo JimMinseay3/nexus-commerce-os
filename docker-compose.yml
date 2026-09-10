@@ -1,0 +1,93 @@
+name: cross-border-erp
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: erp
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://erp:${POSTGRES_PASSWORD:-erp}@db:5432/erp
+      REDIS_URL: redis://redis:6379/0
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn erp.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://erp:${POSTGRES_PASSWORD:-erp}@db:5432/erp
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A erp worker -l info --concurrency=4
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://erp:${POSTGRES_PASSWORD:-erp}@db:5432/erp
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A erp beat -l info --schedule /tmp/celerybeat-schedule
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  static_data:
+

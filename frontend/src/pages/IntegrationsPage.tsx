@@ -1,0 +1,29 @@
+import { useEffect, useState } from 'react'
+import { Button, Form, Input, message, Modal, Select, Space, Spin, Switch, Tag } from 'antd'
+import { ApiOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons'
+import api from '../api'
+import PageHeader from '../components/PageHeader'
+import ResourceTable from '../components/ResourceTable'
+import StatusPill from '../components/StatusPill'
+
+const providerMeta:Record<string,{name:string;mark:string;className:string;hint:string}>={
+  amazon:{name:'Amazon SP-API',mark:'a',className:'provider-amazon',hint:'Orders · FBA · Finances'},
+  wayfair:{name:'Wayfair Supplier API',mark:'W',className:'provider-wayfair',hint:'PO · Inventory · ASN'},
+  walmart:{name:'Walmart Marketplace',mark:'✦',className:'provider-walmart',hint:'Orders · WFS · Returns'},
+  mock:{name:'本地业务模拟器',mark:'M',className:'provider-amazon',hint:'全流程演示数据'},
+}
+
+export default function IntegrationsPage(){
+  const[accounts,setAccounts]=useState<any[]>([]);const[loading,setLoading]=useState(true);const[selected,setSelected]=useState<any>(null);const[form]=Form.useForm();const[busy,setBusy]=useState('')
+  const load=()=>{setLoading(true);api.get('/channel-accounts/',{params:{page_size:100}}).then(r=>setAccounts(r.data.results)).finally(()=>setLoading(false))}
+  useEffect(load,[])
+  const open=(account:any)=>{setSelected(account);form.setFieldsValue({...account,credentials:{},use_mock:account.settings?.use_mock??true,marketplace:account.settings?.marketplace||'US'})}
+  const save=async()=>{try{const v=await form.validateFields();await api.patch(`/channel-accounts/${selected.id}/`,{name:v.name,environment:v.environment,region:v.region,is_enabled:v.is_enabled,credentials:v.credentials,settings:{...selected.settings,use_mock:v.use_mock,marketplace:v.marketplace}});message.success('连接器设置已保存');setSelected(null);load()}catch(e:any){if(e.userMessage)message.error(e.userMessage)}}
+  const action=async(account:any,name:string)=>{setBusy(`${account.id}:${name}`);try{const{data}=await api.post(`/channel-accounts/${account.id}/${name}/`,name==='sync'?{job_type:'orders'}:{});message.success(name==='test_connection'?(data.ok?'连接成功':'连接失败'):name==='sync'?'同步任务已提交':'能力已更新');load()}catch(e:any){message.error(e.userMessage)}finally{setBusy('')}}
+  return <><PageHeader title="平台连接" subtitle="配置凭证、验证权限并监控 Amazon、Wayfair、Walmart 同步" actions={<Button icon={<ReloadOutlined/>} onClick={load}>刷新状态</Button>}/>
+    {loading?<Spin/>:<div className="integration-grid">{accounts.map(account=>{const meta=providerMeta[account.provider]||providerMeta.mock;return <div className="integration-card" key={account.id}><div style={{display:'flex',justifyContent:'space-between'}}><div className={`provider-mark ${meta.className}`}>{meta.mark}</div><StatusPill value={account.environment==='production'?'production_env':'sandbox'}/></div><h3 style={{margin:'0 0 5px'}}>{meta.name}</h3><div style={{color:'#839088',fontSize:12}}>{account.name} · {meta.hint}</div><div className="integration-meta"><div><label>状态</label><b style={{color:account.is_enabled?'#0b7a58':'#85918b'}}>{account.is_enabled?'已启用':'未启用'}</b></div><div><label>最后同步</label><b>{account.last_sync_at?new Date(account.last_sync_at).toLocaleString():'尚未同步'}</b></div></div>{account.last_error&&<div style={{background:'#fff0ed',color:'#a33b2e',padding:9,borderRadius:8,fontSize:12,marginBottom:12}}>{account.last_error}</div>}<Space wrap><Button icon={<SettingOutlined/>} onClick={()=>open(account)}>配置</Button><Button loading={busy===`${account.id}:test_connection`} onClick={()=>action(account,'test_connection')}>测试连接</Button><Button type="primary" loading={busy===`${account.id}:sync`} onClick={()=>action(account,'sync')}>立即同步</Button></Space></div>})}</div>}
+    <div style={{marginTop:24}}><h3>同步任务</h3><ResourceTable endpoint="/sync-jobs/" columns={[{title:'平台',dataIndex:'provider',render:v=><Tag>{String(v).toUpperCase()}</Tag>},{title:'账号',dataIndex:'account_name'},{title:'类型',dataIndex:'job_type'},{title:'状态',dataIndex:'status',render:v=><StatusPill value={v}/>},{title:'处理数',dataIndex:'processed'},{title:'失败数',dataIndex:'failed'},{title:'开始时间',dataIndex:'started_at',render:v=>v?new Date(v).toLocaleString():'—'},{title:'错误',dataIndex:'error',ellipsis:true}]}/></div>
+    <Modal title={`配置 ${selected?providerMeta[selected.provider]?.name:''}`} width={680} open={!!selected} onCancel={()=>setSelected(null)} onOk={save} okText="保存配置"><Form form={form} layout="vertical" className="form-grid" style={{marginTop:20}}><Form.Item name="name" label="账号名称" rules={[{required:true}]}><Input/></Form.Item><Form.Item name="environment" label="环境"><Select options={[{label:'沙箱',value:'sandbox'},{label:'生产',value:'production'}]}/></Form.Item><Form.Item name="region" label="区域"><Select options={[{label:'北美 NA',value:'NA'},{label:'欧洲 EU',value:'EU'},{label:'远东 FE',value:'FE'}]}/></Form.Item><Form.Item name="marketplace" label="站点"><Input placeholder="US / UK / DE"/></Form.Item><Form.Item name="use_mock" label="使用本地模拟器" valuePropName="checked"><Switch/></Form.Item><Form.Item name="is_enabled" label="启用定时同步" valuePropName="checked"><Switch/></Form.Item>{selected?.provider==='amazon'?<><Form.Item name={['credentials','lwa_client_id']} label="LWA Client ID"><Input/></Form.Item><Form.Item name={['credentials','lwa_client_secret']} label="LWA Client Secret"><Input.Password/></Form.Item><Form.Item name={['credentials','refresh_token']} label="Refresh Token"><Input.Password/></Form.Item><Form.Item name={['credentials','seller_id']} label="Seller ID"><Input/></Form.Item></>:<><Form.Item name={['credentials','client_id']} label="Client ID"><Input/></Form.Item><Form.Item name={['credentials','client_secret']} label="Client Secret"><Input.Password/></Form.Item></>}</Form></Modal>
+  </>
+}
+

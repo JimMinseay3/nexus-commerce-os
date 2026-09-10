@@ -1,0 +1,16 @@
+import { useState } from 'react'
+import { Button, message, Modal, Tabs, Tag } from 'antd'
+import api from '../api'
+import PageHeader from '../components/PageHeader'
+import ResourceTable from '../components/ResourceTable'
+import StatusPill from '../components/StatusPill'
+
+export default function AdministrationPage(){
+  const[key,setKey]=useState<string|null>(null)
+  const issue=async()=>{try{const{data}=await api.post('/api-keys/',{name:`WMS-${new Date().toISOString().slice(0,10)}`,scopes:['read','write']});setKey(data.key)}catch(e:any){message.error(e.userMessage)}}
+  return <><PageHeader title="系统管理" subtitle="用户角色、API Key、Webhook、同步健康和不可篡改审计"/><Tabs items={[
+    {key:'users',label:'用户与角色',children:<ResourceTable endpoint="/users/" columns={[{title:'用户名',dataIndex:'username'},{title:'姓名',render:(_:unknown,r:any)=>`${r.first_name||''}${r.last_name||''}`||'—'},{title:'邮箱',dataIndex:'email'},{title:'角色',dataIndex:'role',render:v=><Tag>{v}</Tag>},{title:'状态',dataIndex:'is_active',render:v=><StatusPill value={v?'active':'disabled'}/>},{title:'最后登录',dataIndex:'last_login',render:v=>v?new Date(v).toLocaleString():'从未'}]} createTitle="新建用户" createFields={[{name:'username',label:'用户名',required:true},{name:'password',label:'初始密码',type:'password',required:true},{name:'first_name',label:'姓名'},{name:'email',label:'邮箱'},{name:'role',label:'角色',type:'select',initialValue:'operations',options:[{label:'管理员',value:'admin'},{label:'运营',value:'operations'},{label:'采购',value:'procurement'},{label:'仓库',value:'warehouse'},{label:'财务',value:'finance'},{label:'管理层只读',value:'management'}]}]}/>},
+    {key:'keys',label:'API Key',children:<ResourceTable endpoint="/api-keys/" columns={[{title:'名称',dataIndex:'name'},{title:'前缀',dataIndex:'prefix'},{title:'权限',dataIndex:'scopes',render:v=>v?.map((x:string)=><Tag key={x}>{x}</Tag>)},{title:'状态',dataIndex:'is_active',render:v=><StatusPill value={v?'active':'disabled'}/>},{title:'最后使用',dataIndex:'last_used_at',render:v=>v?new Date(v).toLocaleString():'从未'}]} extraTools={<Button type="primary" onClick={issue}>签发 API Key</Button>}/>},
+    {key:'webhooks',label:'Webhook',children:<ResourceTable endpoint="/webhooks/" columns={[{title:'名称',dataIndex:'name'},{title:'目标 URL',dataIndex:'url'},{title:'事件',dataIndex:'events',render:v=>v?.join(', ')},{title:'状态',dataIndex:'is_active',render:v=><StatusPill value={v?'active':'disabled'}/>}] } createTitle="新建 Webhook" createFields={[{name:'name',label:'名称',required:true},{name:'url',label:'目标 URL',required:true},{name:'secret',label:'签名密钥',type:'password',required:true}]}/>},
+    {key:'audit',label:'审计日志',children:<ResourceTable endpoint="/audit-events/" columns={[{title:'时间',dataIndex:'created_at',width:180,render:v=>new Date(v).toLocaleString()},{title:'操作人',dataIndex:'actor_name',render:v=>v||'系统/API'},{title:'动作',dataIndex:'action',render:v=><Tag>{v}</Tag>},{title:'资源',render:(_:unknown,r:any)=>`${r.resource_type} · ${r.resource_id||'—'}`},{title:'请求 ID',dataIndex:'request_id',ellipsis:true},{title:'链式哈希',dataIndex:'event_hash',ellipsis:true}]}/>} ]}/><Modal title="API Key 已签发" open={!!key} onCancel={()=>setKey(null)} footer={<Button type="primary" onClick={()=>setKey(null)}>我已安全保存</Button>}><p>密钥只显示这一次，请立即复制到安全位置：</p><pre style={{whiteSpace:'pre-wrap',wordBreak:'break-all',padding:14,background:'#f3f5f1',borderRadius:8}}>{key}</pre></Modal></>
+}
