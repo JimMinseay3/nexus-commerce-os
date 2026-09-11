@@ -73,11 +73,49 @@ flowchart LR
 | 采购补货 | 供应商、审批流、采购在途、部分收货、可解释补货建议、MOQ / 整箱处理 |
 | 退货售后 | 退货同步、质检处置、重新入库、报废、部分 / 全额退款、利润调整 |
 | 经营财务 | 多币种、汇率、移动加权成本、结算对账、订单级收入费用与贡献利润 |
+| BI 分析中心 | 跨域筛选、经营/利润/库存/退货看板、点击下钻、保存视图与 CSV 导出 |
 | 平台连接 | Amazon SP-API、Wayfair、Walmart 正式适配器与本地模拟器 |
 | 标准数据中台 | Raw / Canonical / Semantic 三层、字段目录、版本化映射、血缘、冲突与 Outbox |
 | 新增适配器 | eBay OAuth 订单/库存/履约；领星 ERP 商品/订单/库存/采购/财务只读契约 |
 | 企业能力 | RBAC、哈希链审计、Excel 导入预览与回滚、API Key、Webhook、OpenAPI |
 | 运维部署 | Docker Compose、Celery、Redis、Nginx、Windows 启停 / 升级 / 备份脚本 |
+
+## 🖥️ 产品界面
+
+所有截图都来自内置演示账套的真实运行页面，不是设计稿。演示数据可通过“全链路沙盘”重复生成，接入正式连接器后页面使用同一套 API 与标准模型。
+
+### BI 分析中心
+
+![NEXUS BI 分析中心](docs/assets/screenshots/bi.png)
+
+全局时间、渠道、店铺、国家、仓库和 SKU 筛选会同时作用于订单、库存、财务和退货事实。支持经营总览、利润分析、库存健康与退货洞察四个工作区；图表点击下钻、分析视图保存、CSV 导出和指标血缘均已接通。
+
+<table>
+  <tr>
+    <td width="50%"><b>经营驾驶舱</b><br/><sub>销售、贡献利润、库存与业务预警</sub><br/><img src="docs/assets/screenshots/dashboard.png" alt="经营驾驶舱"/></td>
+    <td width="50%"><b>全链路业务沙盘</b><br/><sub>九步验证订单到结算的完整业务闭环</sub><br/><img src="docs/assets/screenshots/workflow.png" alt="全链路业务沙盘"/></td>
+  </tr>
+  <tr>
+    <td><b>商品中心</b><br/><sub>SPU、SKU、BOM、包装属性与渠道映射</sub><br/><img src="docs/assets/screenshots/products.png" alt="商品中心"/></td>
+    <td><b>订单履约</b><br/><sub>多平台订单、分仓、预占、出库与追踪回传</sub><br/><img src="docs/assets/screenshots/orders.png" alt="订单履约"/></td>
+  </tr>
+  <tr>
+    <td><b>采购管理</b><br/><sub>补货建议、审批、采购在途与成本分摊</sub><br/><img src="docs/assets/screenshots/procurement.png" alt="采购管理"/></td>
+    <td><b>仓储库存</b><br/><sub>统一库存余额、不可变流水、调拨与盘点</sub><br/><img src="docs/assets/screenshots/inventory.png" alt="仓储库存"/></td>
+  </tr>
+  <tr>
+    <td><b>退货售后</b><br/><sub>申请、质检、良品入库、报废与退款</sub><br/><img src="docs/assets/screenshots/returns.png" alt="退货售后"/></td>
+    <td><b>经营财务</b><br/><sub>收入、费用、结算、汇率与订单贡献利润</sub><br/><img src="docs/assets/screenshots/finance.png" alt="经营财务"/></td>
+  </tr>
+  <tr>
+    <td><b>平台连接</b><br/><sub>Amazon、eBay、Wayfair、Walmart、领星与模拟器</sub><br/><img src="docs/assets/screenshots/integrations.png" alt="平台连接"/></td>
+    <td><b>标准数据中台</b><br/><sub>Raw / Canonical / Semantic、字段映射、冲突与血缘</sub><br/><img src="docs/assets/screenshots/data-hub.png" alt="标准数据中台"/></td>
+  </tr>
+  <tr>
+    <td><b>数据导入</b><br/><sub>Excel / CSV 映射、预览校验与整批执行</sub><br/><img src="docs/assets/screenshots/imports.png" alt="数据导入"/></td>
+    <td><b>系统管理</b><br/><sub>用户角色、API Key、Webhook、同步健康与审计</sub><br/><img src="docs/assets/screenshots/administration.png" alt="系统管理"/></td>
+  </tr>
+</table>
 
 ## 🧩 系统架构
 
@@ -192,12 +230,13 @@ npm run build
 - [x] eBay 与领星第一期连接器（领星只读）
 - [x] 字段目录、Raw 原始层、外部身份、冲突、血缘与受控写回
 - [x] 版本化可视映射中心与 PostgreSQL 只读语义视图
+- [x] BI 分析中心、跨域筛选、点击下钻、保存视图与分析导出
 - [x] 可操作的九步全链路业务沙盘
 - [x] Docker Compose 与 Windows 运维脚本
 - [ ] 生产账号认证与真实平台契约回归
 - [ ] 指定海外仓 / WMS / 物流服务商适配器
 - [ ] 百万订单基准压测与慢查询报告
-- [ ] 更多经营分析视图与可配置审批流
+- [ ] 可拖拽 BI 布局、指标公式编辑器与可配置审批流
 
 ## 🤝 参与项目
 

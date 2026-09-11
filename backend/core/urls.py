@@ -55,6 +55,7 @@ router.register("raw-records", views.RawRecordViewSet, basename="raw-record")
 router.register("data-conflicts", views.DataConflictViewSet, basename="data-conflict")
 router.register("external-identities", views.ExternalIdentityViewSet, basename="external-identity")
 router.register("outbound-actions", views.OutboundActionViewSet, basename="outbound-action")
+router.register("analytics-saved-views", views.AnalyticsSavedViewViewSet, basename="analytics-saved-view")
 
 urlpatterns = [
     path("auth/login/", views.LoginView.as_view()),
@@ -65,4 +66,6 @@ urlpatterns = [
     path("workflow-simulator/", views.WorkflowSimulationView.as_view()),
     path("lineage/<str:entity_type>/<uuid:entity_id>/", views.LineageView.as_view()),
     path("analytics/overview/", views.AnalyticsOverviewView.as_view()),
+    path("analytics/workbench/", views.AnalyticsWorkbenchView.as_view()),
+    path("analytics/export/", views.AnalyticsExportView.as_view()),
 ] + router.urls

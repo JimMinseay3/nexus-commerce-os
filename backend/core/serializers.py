@@ -577,3 +577,12 @@ class MetricDefinitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.MetricDefinition
         fields = "__all__"
+
+
+class AnalyticsSavedViewSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source="owner.username", read_only=True)
+
+    class Meta:
+        model = models.AnalyticsSavedView
+        fields = "__all__"
+        read_only_fields = ["company", "owner"]

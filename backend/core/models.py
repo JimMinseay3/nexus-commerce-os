@@ -1044,3 +1044,18 @@ class MetricDefinition(UUIDModel):
     dimensions = models.JSONField(default=list, blank=True)
     version = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
+
+
+class AnalyticsSavedView(UUIDModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="analytics_saved_views")
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="analytics_saved_views")
+    name = models.CharField(max_length=120)
+    dashboard = models.CharField(max_length=32, default="overview")
+    filters = models.JSONField(default=dict, blank=True)
+    layout = models.JSONField(default=dict, blank=True)
+    is_shared = models.BooleanField(default=False)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "owner", "name"], name="uniq_analytics_saved_view")]
+        ordering = ["-updated_at"]

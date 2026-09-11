@@ -20,11 +20,13 @@ const ImportsPage = lazy(() => import('./pages/ImportsPage'))
 const AdministrationPage = lazy(() => import('./pages/AdministrationPage'))
 const WorkflowPage = lazy(() => import('./pages/WorkflowPage'))
 const DataHubPage = lazy(() => import('./pages/DataHubPage'))
+const BIPage = lazy(() => import('./pages/BIPage'))
 
 const { Header, Sider, Content } = Layout
 
 const menu: MenuProps['items'] = [
   { key: '/', icon: <HomeOutlined />, label: '经营驾驶舱' },
+  { key: '/bi', icon: <BarChartOutlined />, label: 'BI 分析中心' },
   { key: '/workflow', icon: <NodeIndexOutlined />, label: '全链路沙盘' },
   { key: '/products', icon: <ProductOutlined />, label: '商品中心' },
   { key: '/orders', icon: <ShoppingCartOutlined />, label: '订单履约' },
@@ -38,7 +40,7 @@ const menu: MenuProps['items'] = [
   { key: '/administration', icon: <SafetyCertificateOutlined />, label: '系统管理' },
 ]
 
-const titles: Record<string, string> = { '/':'经营驾驶舱', '/workflow':'全链路沙盘', '/products':'商品中心', '/orders':'订单履约', '/returns':'退货售后', '/procurement':'采购管理', '/inventory':'仓储库存', '/finance':'经营财务', '/integrations':'平台连接', '/data-hub':'标准数据中台', '/imports':'数据导入', '/administration':'系统管理' }
+const titles: Record<string, string> = { '/':'经营驾驶舱', '/bi':'BI 分析中心', '/workflow':'全链路沙盘', '/products':'商品中心', '/orders':'订单履约', '/returns':'退货售后', '/procurement':'采购管理', '/inventory':'仓储库存', '/finance':'经营财务', '/integrations':'平台连接', '/data-hub':'标准数据中台', '/imports':'数据导入', '/administration':'系统管理' }
 
 function ProtectedApp() {
   const { user, loading, logout } = useAuth()
@@ -65,6 +67,7 @@ function ProtectedApp() {
       <Content className="content">
         <Suspense fallback={<div style={{display:'grid',placeItems:'center',height:420}}><Spin size="large"/></div>}><Routes>
           <Route path="/" element={<DashboardPage/>}/>
+          <Route path="/bi" element={<BIPage/>}/>
           <Route path="/workflow" element={<WorkflowPage/>}/>
           <Route path="/products" element={<ProductsPage/>}/>
           <Route path="/orders" element={<OrdersPage/>}/>

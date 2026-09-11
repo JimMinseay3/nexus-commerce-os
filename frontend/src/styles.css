@@ -154,6 +154,45 @@ body { margin: 0; min-width: 1180px; min-height: 100vh; background: #f6f7fb; }
 .semantic-grid pre { grid-column: 1/-1; max-height: 300px; overflow: auto; padding: 17px; border-radius: 12px; color: #c7f7e9; background: #101526; }
 .mapping-preview { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: 11px; }
 
+/* NEXUS BI workbench */
+.bi-actions { display: flex; align-items: center; gap: 8px; }
+.bi-hero { position: relative; min-height: 250px; display: flex; align-items: center; justify-content: space-between; overflow: hidden; padding: 35px 44px; color: #fff; border-radius: 24px; background: radial-gradient(circle at 76% 14%,rgba(34,199,184,.2),transparent 28%),radial-gradient(circle at 12% 110%,rgba(103,88,232,.48),transparent 37%),linear-gradient(128deg,#090e1d,#161334 64%,#102d35); box-shadow: 0 22px 55px rgba(20,20,55,.18); }
+.bi-hero > div { position: relative; z-index: 2; }
+.bi-hero h2 { margin: 16px 0 9px; font-size: 34px; line-height: 1.16; letter-spacing: -.05em; }
+.bi-hero p { max-width: 700px; margin: 0; color: #aeb5cf; line-height: 1.7; }
+.bi-pulse { min-width: 210px; text-align: center; }
+.bi-pulse > div { width: 150px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto; border: 1px solid rgba(83,231,205,.42); border-radius: 50%; background: rgba(11,16,32,.55); box-shadow: 0 0 0 13px rgba(67,219,195,.04), inset 0 0 36px rgba(55,210,188,.12); }
+.bi-pulse b { font-size: 31px; letter-spacing: -.05em; }
+.bi-pulse span, .bi-pulse small { margin-top: 6px; color: #9ba4c2; font-size: 10px; }
+.bi-orbit { position: absolute; z-index: 1; border: 1px solid rgba(123,110,255,.19); border-radius: 50%; }
+.bi-orbit::after { content:""; position:absolute; width:7px; height:7px; border-radius:50%; background:#58e5cb; box-shadow:0 0 16px #58e5cb; }
+.bi-orbit-a { width: 340px; height: 340px; right: -55px; top: -95px; }
+.bi-orbit-a::after { left: 42px; top: 66px; }
+.bi-orbit-b { width: 245px; height: 245px; right: -5px; top: -44px; }
+.bi-orbit-b::after { right: 9px; bottom: 65px; background:#8d7fff; }
+.bi-filterbar { display: grid; grid-template-columns: auto 245px repeat(5,minmax(130px,1fr)) auto; gap: 8px; align-items: center; margin: 16px 0; padding: 14px; border: 1px solid var(--nexus-line); border-radius: 15px; background:#fff; box-shadow:0 8px 25px rgba(25,27,62,.035); }
+.bi-filter-title { display: flex; align-items: center; gap: 7px; margin-right: 4px; color:#53586e; font-size:12px; font-weight:700; white-space:nowrap; }
+.bi-filter-title svg { color:#6758e8; }
+.bi-section-switch { max-width: 620px; margin: 0 auto 16px; padding: 5px; border-radius:12px; background:#e9eaf2; }
+.bi-section-switch .ant-segmented { width:100%; background:transparent; }
+.bi-metrics { margin-bottom:18px; }
+.bi-metric { border-top:3px solid #6758e8; }
+.bi-metric-1 { border-top-color:#22c7b8; }.bi-metric-2 { border-top-color:#ffb44a; }.bi-metric-3 { border-top-color:#ff7187; }
+.bi-grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+.bi-chart-card, .bi-table-card { min-width:0; min-height:350px; padding:20px; border:1px solid var(--nexus-line); border-radius:16px; background:#fff; box-shadow:0 8px 30px rgba(25,27,62,.035); }
+.bi-chart-card .section-title small { color:#8a8fa4; font-size:10px; font-weight:500; }
+.bi-chart-body { height:280px; }
+.bi-wide { grid-column:auto; }
+.bi-table-card { min-height:0; }
+.bi-lineage { display:flex; align-items:center; gap:8px; margin-top:17px; padding:13px 16px; color:#777d93; font-size:11px; border:1px solid #dedff0; border-radius:13px; background:linear-gradient(110deg,#f2f1ff,#eefbf8); }
+.bi-lineage svg { color:#6758e8; }
+
+@media (min-width: 1500px) { .bi-grid { grid-template-columns:2fr 1fr; } }
+@media (max-width: 1500px) {
+  .bi-filterbar { grid-template-columns:auto 230px repeat(3,minmax(135px,1fr)); }
+  .bi-filterbar > :nth-child(6), .bi-filterbar > :nth-child(7) { grid-row:2; }
+}
+
 @media (max-width: 1400px) {
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .integration-grid { grid-template-columns: 1fr 1fr; }

@@ -140,3 +140,29 @@ def test_csv_import_uses_published_mapping_and_archives_raw(base_data, tmp_path)
         execute_import(job, user)
     assert Supplier.objects.filter(company=company, code="S2", name="新供应商").exists()
     assert RawRecord.objects.filter(company=company, object_type="suppliers", mapping_version=version).count() == 1
+
+
+@pytest.mark.django_db
+def test_bi_workbench_saved_view_and_export(base_data):
+    company, user, *_ = base_data
+    amazon = connection(company, "amazon", "Amazon BI")
+    ingest_records(amazon, "orders", [normalized_order("AMZ-BI")])
+    client = APIClient()
+    client.force_authenticate(user)
+
+    workbench = client.get("/api/v1/analytics/workbench/", {"channel": "amazon", "days": 30})
+    assert workbench.status_code == 200, workbench.data
+    assert workbench.data["kpis"]["orders"] == 1
+    assert workbench.data["channels"][0]["key"] == "amazon"
+    assert workbench.data["field_definition_version"] == "1.0"
+
+    saved = client.post("/api/v1/analytics-saved-views/", {
+        "name": "Amazon 月报", "dashboard": "overview", "filters": {"channel": "amazon"}, "layout": {"version": 1},
+    }, format="json")
+    assert saved.status_code == 201, saved.data
+    assert client.get("/api/v1/analytics-saved-views/").data["results"][0]["name"] == "Amazon 月报"
+
+    exported = client.get("/api/v1/analytics/export/", {"dataset": "channels", "channel": "amazon"})
+    assert exported.status_code == 200
+    assert exported["Content-Type"].startswith("text/csv")
+    assert "amazon,1,100" in exported.content.decode("utf-8-sig")

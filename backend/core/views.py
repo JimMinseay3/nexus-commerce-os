@@ -1,3 +1,4 @@
+import csv
 import secrets
 from datetime import timedelta
 from decimal import Decimal
@@ -25,7 +26,7 @@ from .audit import record_audit
 from .connectors import get_connector
 from .permissions import IsAdminRole, RolePermission
 from .services.finance import COST_TYPES, order_profit
-from .services.analytics import overview as analytics_overview
+from .services.analytics import overview as analytics_overview, workbench as analytics_workbench
 from .services.datahub import ingest_records, replay_raw_record, run_ingestion
 from .services.imports import RESOURCE_FIELDS, execute_import, preview_import
 from .services.inventory import move_inventory
@@ -1027,3 +1028,59 @@ class AnalyticsOverviewView(APIView):
     def get(self, request):
         days = max(1, min(int(request.query_params.get("days", 30)), 730))
         return Response(analytics_overview(company_for(request), days))
+
+
+class AnalyticsWorkbenchView(APIView):
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        return Response(analytics_workbench(company_for(request), request.query_params))
+
+
+class AnalyticsExportView(APIView):
+    def get(self, request):
+        data = analytics_workbench(company_for(request), request.query_params)
+        dataset = request.query_params.get("dataset", "trend")
+        allowed = {
+            "trend": ("日期", "订单数", "GMV", "收入", "成本", "贡献利润"),
+            "channels": ("渠道", "订单数", "GMV"),
+            "top_skus": ("SKU", "名称", "销量", "销售额"),
+            "warehouse_inventory": ("仓库", "国家", "现有量", "预占量", "可用量", "在途量", "残次量"),
+            "finance_breakdown": ("费用类型", "笔数", "金额"),
+            "return_reasons": ("退货原因", "退货数", "退款额"),
+        }
+        if dataset not in allowed:
+            return Response({"detail": "不支持的数据集"}, status=400)
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="nexus-bi-{dataset}.csv"'
+        response.write("\ufeff")
+        writer = csv.writer(response)
+        writer.writerow(allowed[dataset])
+        for row in data[dataset]:
+            if dataset == "trend":
+                writer.writerow([row["day"], row["orders"], row["gmv"], row["revenue"], row["cost"], row["profit"]])
+            elif dataset == "channels":
+                writer.writerow([row["key"], row["orders"], row["gmv"]])
+            elif dataset == "top_skus":
+                writer.writerow([row["code"], row["name"], row["quantity"], row["sales"]])
+            elif dataset == "warehouse_inventory":
+                writer.writerow([row["warehouse__name"], row["warehouse__country"], row["on_hand"], row["reserved"], row["available"], row["in_transit"], row["damaged"]])
+            elif dataset == "finance_breakdown":
+                writer.writerow([row["key"], row["count"], row["amount"]])
+            elif dataset == "return_reasons":
+                writer.writerow([row["key"], row["count"], row["refund"]])
+        record_audit(request, "analytics_export", detail={"dataset": dataset, "filters": dict(request.query_params)})
+        return response
+
+
+class AnalyticsSavedViewViewSet(CompanyQuerySetMixin, AuditedModelViewSet):
+    queryset = models.AnalyticsSavedView.objects.select_related("owner")
+    serializer_class = serializers.AnalyticsSavedViewSerializer
+    permission_area = "analytics"
+
+    def get_queryset(self):
+        company = company_for(self.request)
+        return self.queryset.filter(company=company).filter(Q(owner=self.request.user) | Q(is_shared=True)).order_by("-updated_at")
+
+    def perform_create(self, serializer):
+        instance = serializer.save(company=company_for(self.request), owner=self.request.user)
+        record_audit(self.request, "analytics_view_create", instance)

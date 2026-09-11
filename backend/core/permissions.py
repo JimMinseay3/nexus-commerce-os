@@ -10,6 +10,10 @@ ROLE_WRITE_MATRIX = {
     "warehouse": {UserProfile.Role.ADMIN, UserProfile.Role.WAREHOUSE},
     "finance": {UserProfile.Role.ADMIN, UserProfile.Role.FINANCE},
     "integrations": {UserProfile.Role.ADMIN, UserProfile.Role.OPERATIONS},
+    "analytics": {
+        UserProfile.Role.ADMIN, UserProfile.Role.OPERATIONS, UserProfile.Role.PROCUREMENT,
+        UserProfile.Role.WAREHOUSE, UserProfile.Role.FINANCE, UserProfile.Role.MANAGEMENT,
+    },
     "admin": {UserProfile.Role.ADMIN},
 }
 
@@ -40,4 +44,3 @@ class IsAdminRole(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         return request.user.is_superuser or getattr(getattr(request.user, "profile", None), "role", "") == UserProfile.Role.ADMIN
-
